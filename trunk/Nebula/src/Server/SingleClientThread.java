@@ -2,6 +2,7 @@ package Server;
 
 import java.io.*;
 import java.net.*;
+import java.util.*;
 
 import Server.DFAState.DFASTATE;
 
@@ -9,6 +10,7 @@ import Basic.Message;
 
 public class SingleClientThread extends Thread {
 	
+	private Timer timer = new Timer();
 	private Socket incoming;
 	private DataInputStream input = null;
 	private DataOutputStream output = null;
@@ -25,7 +27,7 @@ public class SingleClientThread extends Thread {
 	public void run()
 	{
 		// after starting a new thread for new client
-		byte[] buffer = new byte[300];
+		byte[] buffer = new byte[285];
 		// the first step would be grab one message from inputstream
 		try {
 			input = new DataInputStream(incoming.getInputStream());
@@ -34,41 +36,45 @@ public class SingleClientThread extends Thread {
 			// TODO: send back an error message
 			e.printStackTrace();
 		}
+
+		// get byte array from Omar's method
+		// buffer = Omar(input);
 		
 		/*
 		 * grab the fix length of byte stream out of input stream
 		 */
 		while(true)
 		{
-			Message message = GetNewMessage(input, buffer);
+			Message message = GetNewMessage(buffer);
 			if(message.GetMessageType() != "CLOSED")
+			{
 				DFA(message);
+				
+				// after sending message and going to next state, start a timer to monitor the timeout
+				timer.schedule(Task(message), 5000);
+			}
 			else
 				break;
 		}
 
 	}
 	
-	private Message GetNewMessage(InputStream input, byte[] buffer)
-	{
-		byte[] b = buffer;
-		
-		try {
-			int tmp = input.read(b);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		return DecryptMessage(buffer);
+	private TimerTask Task(Message message) {
+		// TODO Auto-generated method stub
+		return null;
 	}
-	
-	private Message DecryptMessage(byte[] buffer)
+
+	private Message GetNewMessage(byte[] buffer)
 	{
 		Message m = new Message();
+		byte[] b = buffer;
+		
+		// read each part of packet from the buffer
+		
 		
 		return m;
 	}
+	
 	
 	private boolean SendMessage(String MessageType)
 	{
@@ -82,6 +88,9 @@ public class SingleClientThread extends Thread {
 				//the current state is disconnected, the message type should be C_HELLO, or disconnect the connection
 				if(m.GetMessageType()=="C_HELLO")
 				{
+					// if get the message, stop the timer
+					timer.cancel();
+					
 					// send S_HELLO to the client
 					boolean sent = SendMessage("S_HELLO");
 					
@@ -104,6 +113,9 @@ public class SingleClientThread extends Thread {
 				// the current state is HELLO_S_SENT, the message type should be DIGEST_REQUEST message, or disconnect the connection
 				if(m.GetMessageType() == "DIGEST_REQUEST")
 				{
+					// if get the message, stop the timer
+					timer.cancel();
+					
 					// send server's digest and public key to client
 					boolean sent = SendMessage("S_AUTH");
 					
@@ -125,6 +137,9 @@ public class SingleClientThread extends Thread {
 				// the current state is WAIT_FOR_ACK, the server is waiting for the authentication from the client side
 				if(m.GetMessageType() == "Auth_ACK")
 				{
+					// if get the message, stop the timer
+					timer.cancel();
+					
 					// send the digest request message to client
 					boolean sent = SendMessage("DIGEST_REQUEST");
 					
@@ -146,6 +161,9 @@ public class SingleClientThread extends Thread {
 				// the current state is WAIT_FOR_C_AUTH
 				if(m.GetMessageType() == "C_AUTH")
 				{
+					// if get the message, stop the timer
+					timer.cancel();
+					
 					tmp = 0; // if get the correct message, set this index to 0
 					
 					boolean passed = AnalyzeDigest(m);
@@ -195,6 +213,8 @@ public class SingleClientThread extends Thread {
 				// the current is WAIT_FOR_KEY, if the message received is the key message from client, go to next state, or send NAK message, and indicate the message desired
 				if(m.GetMessageType() == "SHARED_KEY")
 				{
+					// if get the message, stop the timer
+					timer.cancel();
 					
 					boolean sent = SendMessage("KEY_ACK");
 					
@@ -237,6 +257,9 @@ public class SingleClientThread extends Thread {
 				// Then ask the user to provide the username.
 				if(m.GetMessageType() == "USERNAME")
 				{
+					// if get the message, stop the timer
+					timer.cancel();
+					
 					if(BroadcastThread.CheckUser(m.GetData().toString()))
 					{
 						// if there is the same username, request a new username
@@ -278,10 +301,16 @@ public class SingleClientThread extends Thread {
 				// the current state is connected. The server is expecting the normal chat message
 				if(m.GetMessageType() == "Normal")
 				{
+					// if get the message, stop the timer
+					timer.cancel();
+					
 					BroadcastThread.AddMessage(m);
 				}
 				else if(m.GetMessageType() == "REQUEST_CLOSED")
 				{
+					// if get the message, stop the timer
+					timer.cancel();
+					
 					// disconnect
 				}
 				break;
