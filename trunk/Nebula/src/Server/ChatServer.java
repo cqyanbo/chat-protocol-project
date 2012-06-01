@@ -14,26 +14,25 @@ import Client.fakeClient;
  */
 public class ChatServer{
 	
+	@SuppressWarnings("deprecation")
 	public static void main(String[] args)
 	{
+		// arraylist to store all of the threads from client
+		ArrayList<SingleClientThread> threadslist = new ArrayList<SingleClientThread>();
+		
 		// start a thread to handle the packet broadcasting
 		BroadcastThread broadcast = new BroadcastThread();
 		
 		// start a serversocket for listening client's connection requests
 		ServerSocket serverSocket = null;
-		try {
-			serverSocket = new ServerSocket(10000);
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		
+
 		// initialize the network connection
 		try
 		{
-
+			// start a thread for handling message broadcast
 			broadcast.start();
 			
+			serverSocket = new ServerSocket(7000);
 			// start an infinite loop
 			while(true)
 			{
@@ -41,12 +40,13 @@ public class ChatServer{
 				
 				// spawn a thread to handle the request
 				SingleClientThread singleClientThread = new SingleClientThread(incoming);
+				threadslist.add(singleClientThread);	// store this thread to threads list
 				singleClientThread.start();
 			}
 		}
 		catch(Exception e)
 		{
-			
+			e.printStackTrace();
 		}
 		finally
 		{
