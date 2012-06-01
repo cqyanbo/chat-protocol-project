@@ -7,7 +7,7 @@ public class User {
 	
 	private String username = "";
 	private InetAddress ipAddress = null;
-	private String port = "";
+	private int port;
 	
 	/*
 	 * SET
@@ -22,9 +22,9 @@ public class User {
 		this.ipAddress = _ip;
 	}
 	
-	public void SetPortNumber(String _p)
+	public void SetPortNumber(int i)
 	{
-		this.port = _p;
+		this.port = i;
 	}
 	
 	/*
@@ -40,7 +40,7 @@ public class User {
 		return this.ipAddress;
 	}
 	
-	public String GetPortNumber()
+	public int GetPortNumber()
 	{
 		return this.port;
 	}

@@ -14,19 +14,54 @@ public class BroadcastThread extends Thread {
 		
 	}
 	
-	public static synchronized void Add(Message o)
+	public static synchronized void AddMessage(Message o)
 	{
 		broadlist.add(o);
 	}
 	
-	public static synchronized void AddList(ArrayList o)
+	public static synchronized void AddMessageList(ArrayList o)
 	{
 		broadlist.addAll(o);
 	}
 	
-	public static synchronized ArrayList GetList()
+	public static synchronized ArrayList GetMessageList()
 	{
 		return broadlist;
+	}
+	
+	public static synchronized void AddUser(User user)
+	{
+		userlist.add(user);
+	}
+	
+	public static synchronized boolean CheckUser(String username)
+	{
+		for(User u : userlist)
+		{
+			if(u.GetUsername() == username.trim())
+			{
+				return true;
+			}
+			
+		}
+		
+		return false;
+	}
+	
+	public static synchronized void DeleteUser(User user)
+	{
+		int index = 0;
+		
+		for(User u : userlist)
+		{
+			if(u.GetUsername() == user.GetUsername())
+			{
+				userlist.remove(index);
+				break;
+			}
+			
+			index++;
+		}
 	}
 	
 	// run method
