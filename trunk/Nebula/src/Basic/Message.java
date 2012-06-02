@@ -1,10 +1,26 @@
 package Basic;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.net.URL;
 import java.util.BitSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 import Server.DFAState;
 import Server.DFAState.DFASTATE;
 
 import org.json.simple.*;
+import org.json.simple.parser.ContainerFactory;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 public class Message {
 	
@@ -16,8 +32,8 @@ public class Message {
 	private int version;
 	private String MessageType = ""; // this should be a hex string
 	private long UserID;
-	private int MessageLength;
-	private BitSet Reserved = new BitSet(4);
+	private int MessageLength = 0;
+	private int Reserved = 0;
 	private String Data = "";
 	
 	
@@ -39,7 +55,7 @@ public class Message {
 	
 	public void SetMessageType(String _messagetype) throws Exception
 	{
-		DFASTATE[] dfa = DFASTATE.values();
+		/*DFASTATE[] dfa = DFASTATE.values();
 		boolean a = false;
 		for(int i = 0; i< dfa.length; i++)
 		{
@@ -47,26 +63,18 @@ public class Message {
 			{
 				a = true;
 			}
-		}
-		if(_messagetype.length() == 16 && a)
+		}*/
+		if(_messagetype.length() <= 16)
 			this.MessageType = _messagetype;
 		else
 			throw new IllegalStateException();
 	}
 	
 	public void SetMessageType(int _messagetype) throws Exception
-	{
-		DFASTATE[] dfa = DFASTATE.values();
-		boolean a = false;
-		for(int i = 0; i< dfa.length; i++)
-		{
-			if(dfa[i].name().equals(Integer.toHexString(_messagetype)))
-			{
-				a = true;
-			}
-		}
-		if(Integer.toHexString(_messagetype).length() == 16 && a)
-			this.MessageType = Integer.toHexString(_messagetype);
+	{	
+		String hs = this.toBinary(_messagetype, 8);
+		if(hs.length() <= 16 )
+			this.MessageType = hs;
 		else
 			throw new IllegalStateException();
 	}
@@ -83,7 +91,7 @@ public class Message {
 	
 	public void SetMessageLength() throws Exception
 	{
-		if(fromByteArray(Data.getBytes()).length() > 2244)
+		if(fromByteArray(Data.getBytes()).length() < 2244)
 			this.MessageLength = fromByteArray(Data.getBytes()).length();
 		else
 			throw new IllegalStateException();
@@ -131,6 +139,110 @@ public class Message {
 	 * Convert
 	 */
 	
+	public static boolean[] StrToBool(String input){
+        boolean[] output=Binstr16ToBool(BinstrToBinstr16(StrToBinstr(input)));
+        return output;
+    }
+	
+	 private static String StrToBinstr(String str) {
+	        char[] strChar=str.toCharArray();
+	        String result="";
+	        for(int i=0;i<strChar.length;i++){
+	            result +=Integer.toBinaryString(strChar[i])+ " ";
+	        }
+	        return result;
+	    }
+	 
+	 public static String BoolToStr(boolean[] input){
+	        String output=BinstrToStr(Binstr16ToBinstr(BoolToBinstr16(input)));
+	        return output;
+	    }
+	 
+	 private static String BoolToBinstr16(boolean[] input){ 
+	        StringBuffer output=new StringBuffer();
+	        for(int i=0;i<input.length;i++){
+	            if(input[i])
+	                output.append('1');
+	            else
+	                output.append('0');
+	            if((i+1)%16==0)
+	                output.append(' ');           
+	        }
+	        output.append(' ');
+	        return output.toString();
+	    }
+	 
+	 private static char BinstrToChar(String binStr){
+	        int[] temp=BinstrToIntArray(binStr);
+	        int sum=0;   
+	        for(int i=0; i<temp.length;i++){
+	            sum +=temp[temp.length-1-i]<<i;
+	        }   
+	        return (char)sum;
+	    }
+	 
+	 private static int[] BinstrToIntArray(String binStr) {       
+	        char[] temp=binStr.toCharArray();
+	        int[] result=new int[temp.length];   
+	        for(int i=0;i<temp.length;i++) {
+	            result[i]=temp[i]-48;
+	        }
+	        return result;
+	    }
+	 
+	 private static String BinstrToStr(String binStr) {
+	        String[] tempStr=StrToStrArray(binStr);
+	        char[] tempChar=new char[tempStr.length];
+	        for(int i=0;i<tempStr.length;i++) {
+	            tempChar[i]=BinstrToChar(tempStr[i]);
+	        }
+	        return String.valueOf(tempChar);
+	    }
+	 
+	  private static String Binstr16ToBinstr(String input){
+	        StringBuffer output=new StringBuffer();
+	        String[] tempStr=StrToStrArray(input);
+	        for(int i=0;i<tempStr.length;i++){
+	            for(int j=0;j<16;j++){
+	                if(tempStr[i].charAt(j)=='1'){
+	                    output.append(tempStr[i].substring(j)+" ");
+	                    break;
+	                }
+	                if(j==15&&tempStr[i].charAt(j)=='0')
+	                    output.append("0"+" ");
+	            }
+	        }
+	        return output.toString();
+	    }   
+	 
+	 private static String BinstrToBinstr16(String input){
+	        StringBuffer output=new StringBuffer();
+	        String[] tempStr=StrToStrArray(input);
+	        for(int i=0;i<tempStr.length;i++){
+	            for(int j=16-tempStr[i].length();j>0;j--)
+	                output.append('0');
+	            output.append(tempStr[i]+" ");
+	        }
+	        return output.toString();
+	    }
+	 
+	 private static String[] StrToStrArray(String str) {
+	        return str.split(" ");
+	    }
+	 
+	 private static boolean[] Binstr16ToBool(String input){
+	        String[] tempStr=StrToStrArray(input);
+	        boolean[] output=new boolean[tempStr.length*16];
+	        for(int i=0,j=0;i<input.length();i++,j++)
+	            if(input.charAt(i)=='1')
+	                output[j]=true;
+	            else if(input.charAt(i)=='0')
+	                output[j]=false;
+	            else
+	                j--;
+	        return output;
+	    }
+	
 	// convert from bitset to int[]
 	private int[] bits2Ints(BitSet bs) {
 	    int[] temp = new int[bs.size() / 32];
@@ -151,33 +263,37 @@ public class Message {
 	      sb.append(((_userid & 1) == 1) ? '1' : '0');
 	      _userid >>= 1;
 	    }
-
-	    return sb.reverse().toString();
+	    String tmp = sb.reverse().toString();
+	    return tmp;
 	}
 	
 	// convert binary string into BitSet
-	private BitSet String2BitSet(String binary, int limitation) throws Exception
+	private static BitSet String2BitSet(String binary, int limitation) throws Exception
 	{
-		if(binary.length() != limitation)
+		if(binary.length()/8 > limitation)
 		{
 			throw new IndexOutOfBoundsException();
 		}
-		BitSet bs = new BitSet();
 		
+		BitSet bs = new BitSet();
+		int index = 0;
+		//System.out.println("The length of binary = " + binary.length());
 		for(int i = 0; i<binary.length(); i++)
 		{
+			index++;
 			char tmp = binary.charAt(i);
 			if(tmp == '1')
 				bs.set(i, true);
 			else
 				bs.set(i, false);
 		}
-		
+		//System.out.println("The length of bs = " + bs.size() + " index = " + index);
 		return bs;
 	}
 	
-	// converet byte array to bitset
-	private BitSet fromByteArray(byte[] bytes) {
+	// Returns a bitset containing the values in bytes.
+	// The byte-ordering of bytes must be big-endian which means the most significant bit is in element 0.
+	public static BitSet fromByteArray(byte[] bytes) {
 	    BitSet bits = new BitSet();
 	    for (int i=0; i<bytes.length*8; i++) {
 	        if ((bytes[bytes.length-i/8-1]&(1<<(i%8))) > 0) {
@@ -186,9 +302,13 @@ public class Message {
 	    }
 	    return bits;
 	}
-	
-	// convert bitset to byte array
-	private byte[] toByteArray(BitSet bits) {
+
+	// Returns a byte array of at least length 1.
+	// The most significant bit in the result is guaranteed not to be a 1
+	// (since BitSet does not support sign extension).
+	// The byte-ordering of the result is big-endian which means the most significant bit is in element 0.
+	// The bit at index 0 of the bit set is assumed to be the least significant bit.
+	public static byte[] toByteArray(BitSet bits) {
 	    byte[] bytes = new byte[bits.length()/8+1];
 	    for (int i=0; i<bits.length(); i++) {
 	        if (bits.get(i)) {
@@ -207,7 +327,7 @@ public class Message {
 	    return value;
 	}
 	
-	// converet long to int
+	// convert long to int
 	private int safeLongToInt(long l) {
 	    if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
 	        throw new IllegalArgumentException
@@ -216,50 +336,149 @@ public class Message {
 	    return (int) l;
 	}
 	
+	// convert string to binary string
+	private String StringToBinary(String s)
+	{
+		s += "\r\n";
+		  byte[] bytes = s.getBytes();
+		  StringBuilder binary = new StringBuilder();
+		  for (byte b : bytes)
+		  {
+		     int val = b;
+		     for (int i = 0; i < 8; i++)
+		     {
+		        binary.append((val & 128) == 0 ? 0 : 1);
+		        val <<= 1;
+		     }
+		  }
+		  
+		  return binary.toString();
+	}
+	
 	/*
 	 * Methods
 	 */
 	
 	// store the how packet as byte array
-	public byte[] Packet2ByteArray()
+	public String Packet2ByteArray()
 	{
-		byte[] packet = new byte[285];
-		try {
-			byte[] _version = toByteArray(String2BitSet(this.toBinary(version, 4), 4));
-			byte[] _messagetype = toByteArray(String2BitSet(this.MessageType, 16));
-			packet = combineByteArrays(packet, _version);
-			packet = combineByteArrays(packet, _messagetype);
-			byte[] _userid = this.toBinary(this.UserID, 16).getBytes();
-			packet = combineByteArrays(packet, _userid);
-			byte[] _reserved = toByteArray(this.Reserved);
-			packet = combineByteArrays(packet, _reserved);
-			byte[] _messagelength = toByteArray(String2BitSet(toBinary(this.MessageLength, 8), 8));
-			packet = combineByteArrays(packet, _messagelength);
-			byte[] _data = Data.getBytes();
-			packet = combineByteArrays(packet, _data);
-			
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		Map jsonObject=new LinkedHashMap();		
+		jsonObject.put("version", new Integer(this.version));
+		jsonObject.put("messagetype", new String(this.MessageType));
+		jsonObject.put("userid", this.UserID);
+		jsonObject.put("reserved", this.Reserved);
+		jsonObject.put("messagelength", this.MessageLength);
+		jsonObject.put("data", this.Data);
 		
-		return packet;
+		return JSONValue.toJSONString(jsonObject).toString();
 	}
 	
-	// convert a byte array to message object
-	public Message ByteArrayToMessage(byte[] packet)
-	{
-		BitSet bs = fromByteArray(packet);
-		//Message m = new Message();
-		this.version = safeLongToInt(BitSetToLong(bs.get(0, 3)));
-		this.MessageType = new String(toByteArray(bs.get(4, 11)));
-		this.UserID = BitSetToLong(bs.get(12, 27));
-		this.Reserved = bs.get(28, 31);
-		this.MessageLength = safeLongToInt(BitSetToLong(bs.get(32, 39)));
-		this.Data = new String(toByteArray(bs.get(40, bs.length() - 1)));
+	public static String toText(String s){
 		
-		return this;
+		String s2 = "";   
+		char nextChar;
+		int length = s.length()/8;
+		for(int i = 0; i < length; i++) //this is a little tricky.  we want [0, 7], [9, 16], etc
+		{
+		     nextChar = (char)Integer.parseInt(s.substring(i, i+8), 2);
+		     s2 += nextChar;
+		}
+		
+		return s2;
+    }
+	
+	// convert a byte array to message object
+	public Message ByteArrayToMessage(String packet)
+	{
+		 Message m = new Message();
+		 JSONParser parser = new JSONParser();
+		  ContainerFactory containerFactory = new ContainerFactory(){
+		    public List creatArrayContainer() {
+		      return new LinkedList();
+		    }
+
+		    public Map createObjectContainer() {
+		      return new LinkedHashMap();
+		    }
+		                        
+		  };
+		  
+		  try{
+			    Map json = (Map)parser.parse(packet, containerFactory);
+			    Iterator iter = json.entrySet().iterator();
+			    while(iter.hasNext()){
+			      Map.Entry entry = (Map.Entry)iter.next();
+			      if(entry.getKey().toString() == "version")
+			      {
+			    	  try {
+						m.SetVersion(Integer.parseInt(entry.getValue().toString()));
+					} catch (NumberFormatException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			      }
+				else if(entry.getKey().toString() == "messagetype")
+				{
+					try {
+						m.SetMessageType(entry.getValue().toString());
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				else if(entry.getKey().toString() == "userid")
+				{
+					try {
+						m.SetUserid(Long.valueOf(entry.getValue().toString()));
+					} catch (NumberFormatException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				else if(entry.getKey().toString() == "data")
+				{
+					try {
+						m.SetData(entry.getValue().toString());
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			      
+			    }
+			                        
+			  }
+			  catch(ParseException pe){
+			    System.out.println(pe);
+			  }
+		
+			  try {
+				m.SetMessageLength();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		return m;
 	}
+	
+	public static char[] toCharArray(BitSet bs)
+    {     
+		//System.out.println(bs.length());
+       int length = bs.length();     
+       char[] arr = new char[length];     
+       for(int i = 0; i < length; i++)
+       {         
+         arr[i] = bs.get(i) ? '1' : '0';     
+       }  
+      return arr; 
+    }
+
 	
 	private byte[] combineByteArrays(byte[] one, byte[] two)
 	{
@@ -271,6 +490,33 @@ public class Message {
 		}
 		
 		return combined;
+	}
+	
+	public static void main(String[] args)
+	{
+		Message m = new Message();
+		String a = "";
+		try {
+			m.SetData("Test");
+			m.SetMessageLength();
+			m.SetMessageType(12);
+			m.SetVersion(1);
+			m.SetUserid(123);
+			
+			a = m.Packet2ByteArray();
+			
+			System.out.println("==" + a);
+			System.out.println(a.length());
+			
+			
+			Message test = m.ByteArrayToMessage(a);
+			System.out.println(test.MessageType);
+			 
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 	
 }
