@@ -12,112 +12,191 @@ public class SingleClientThread extends Thread {
 	
 	private Timer timer = new Timer();
 	private Socket incoming;
+	private int Userid;
 	private DataInputStream input = null;
 	private DataOutputStream output = null;
+	private BufferedReader in = null;
 	private DFAState state = new DFAState();	// store the current state of this single conversation
+	private User user = new User();	// store the current user for this thread
+	
 	
 	private int tmp = 0; // index of times of sending digest to client
 	
 	SingleClientThread(Socket _incoming)
 	{
 		this.incoming = _incoming;
+		try {
+			input = new DataInputStream(incoming.getInputStream());
+			in = new BufferedReader(new InputStreamReader(input));
+			output = new DataOutputStream(incoming.getOutputStream());
+			System.out.println("Get I/O Stream Correctly");
+		} catch (IOException e) {
+			// stop this thread
+			this.stop();
+		}
+		
+	}
+	
+	public int GetUserid()
+	{
+		return this.Userid;
 	}
 	
 	// run method
+	@SuppressWarnings("deprecation")
 	public void run()
 	{
 		// after starting a new thread for new client
-		byte[] buffer = new byte[285];
-		// the first step would be grab one message from inputstream
-		try {
-			input = new DataInputStream(incoming.getInputStream());
-			output = new DataOutputStream(incoming.getOutputStream());
-		} catch (IOException e) {
-			// TODO: send back an error message
-			e.printStackTrace();
-		}
-
-		// get byte array from Omar's method
-		// buffer = Omar(input);
-		
+		System.out.println("Inside of thread");
 		/*
 		 * grab the fix length of byte stream out of input stream
 		 */
-		while(true)
+		if(!incoming.isClosed())
 		{
-			Message message = GetNewMessage(buffer);
-			if(message.GetMessageType() != "CLOSED")
+			while(true)
 			{
-				DFA(message);
-				
-				// after sending message and going to next state, start a timer to monitor the timeout
-				timer.schedule(Task(message), 5000);
+				byte[] buffer = new byte[285];
+				if(incoming.isClosed() || !incoming.isConnected())
+				{
+					break;
+				}
+				try {
+					int a = -1;
+					
+					//while(a < 0)
+					a = input.read(buffer);
+					
+					
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				Message message = GetNewMessage(buffer);
+	
+				if(message.GetMessageType() == 41)
+				{
+					// send ACK message 42, and broadcast client closed message 15
+					Message m = new Message();
+					
+					try
+					{
+						m.SetVersion(1);
+						m.SetMessageType(42);
+						m.SetUserid(this.user.GetUserid());
+						m.SetMessageLength(0);
+						m.SetData(null);
+					}catch (Exception e) {
+						// TODO: handle exception
+					}
+					
+					Send(m);
+					ChatServer.DeleteFromThreadList(this);
+					BroadcastThread.DeleteUser(user);
+					
+					// then broadcast message, without sending to the disconnecting client
+					m = new Message();
+					
+					try {
+						m.SetVersion(1);
+						m.SetMessageType(15);
+						m.SetUserid(this.user.GetUserid());
+						m.SetMessageLength(0);
+						m.SetData(null);
+					} catch (Exception e) {
+						// TODO: handle exception
+					}
+					
+					// give this message to broadcast thread
+					BroadcastThread broadcast = new BroadcastThread(m);
+					broadcast.start();
+					try {
+						incoming.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					break;
+				}
+				else
+				{
+					DFA(message);
+				}
 			}
-			else
-				break;
 		}
 
 	}
-	
-	private TimerTask Task(Message message) {
-		// TODO Auto-generated method stub
-		return null;
+
+	// send message to user
+	public boolean Send(Message m){
+		
+		try {
+			this.output.write(m.Packet2ByteArray());
+			output.flush();
+			return true;
+		} catch (IOException e) {
+			return false;
+		}
 	}
 
 	private Message GetNewMessage(byte[] buffer)
 	{
 		Message m = new Message();
-		byte[] b = buffer;
+		String tt = new String(buffer);
+		char[] test = (tt).toCharArray();
 		
+		m = Message.ByteArrayToMessage(test);
 		// read each part of packet from the buffer
-		
 		
 		return m;
 	}
 	
-	
-	private boolean SendMessage(String MessageType)
-	{
-		return true;
-	}
-	
 	private void DFA(Message m)
 	{
+		//System.out.println("Inside the DFA loop");
+		//System.out.println("The current message is: " + m.GetMessageType());
 		switch (state.GetState()){
 			case DISCONNECTED:
 				//the current state is disconnected, the message type should be C_HELLO, or disconnect the connection
-				if(m.GetMessageType()=="C_HELLO")
-				{
-					// if get the message, stop the timer
-					timer.cancel();
-					
+				if(m.GetMessageType() == 01)
+				{	
 					// send S_HELLO to the client
-					boolean sent = SendMessage("S_HELLO");
-					
+					Message hello = new Message(1, 02, 0, 0, null);
+
 					// then, set the state to S_HELLO_SENT
-					if(sent)
+					if(Send(hello))
 					{
 						state.SetState(DFASTATE.HELLO_S_SENT);
 					}
 					else
 					{
-						// disconnect
+						Message close = new Message(1, 42, this.user.GetUserid(), 0, null);
+						Send(close); // do not need to care if this message would be received by client, because the client would disconnect automatically when timeout
 					}
 				}
 				else
 				{
 					// disconnect
+					try {
+						incoming.close();
+						state.SetState(DFASTATE.DISCONNECTED); // set this thread's state to disconnected
+						this.equals(null); // stop this thread;
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 				break;
 			case HELLO_S_SENT:
 				// the current state is HELLO_S_SENT, the message type should be DIGEST_REQUEST message, or disconnect the connection
-				if(m.GetMessageType() == "DIGEST_REQUEST")
+				if(m.GetMessageType() == 51)
 				{
-					// if get the message, stop the timer
-					timer.cancel();
-					
 					// send server's digest and public key to client
-					boolean sent = SendMessage("S_AUTH");
+					// TODO: get digest and public key from security method
+					String Digest = "digest";
+					String PublicKey = "publick";
+					String DataField = Digest+PublicKey;
+					Message digest = new Message(1, 53, this.user.GetUserid(), DataField.length(), DataField);
+					boolean sent = Send(digest);
 					
 					if(sent)
 					{
@@ -135,13 +214,13 @@ public class SingleClientThread extends Thread {
 				break;
 			case WAIT_FOR_ACK:
 				// the current state is WAIT_FOR_ACK, the server is waiting for the authentication from the client side
-				if(m.GetMessageType() == "Auth_ACK")
+				if(m.GetMessageType() == 55)
 				{
 					// if get the message, stop the timer
 					timer.cancel();
 					
 					// send the digest request message to client
-					boolean sent = SendMessage("DIGEST_REQUEST");
+					boolean sent = Send(new Message(1, 51, 0, 0, null));
 					
 					if(sent)
 					{
@@ -149,7 +228,7 @@ public class SingleClientThread extends Thread {
 					}
 					else
 					{
-						// disconnect
+						// if did not send successfully, 
 					}
 				}
 				else
@@ -159,7 +238,7 @@ public class SingleClientThread extends Thread {
 				break;
 			case WAIT_FOR_C_AUTH:
 				// the current state is WAIT_FOR_C_AUTH
-				if(m.GetMessageType() == "C_AUTH")
+				if(m.GetMessageType() == 52)
 				{
 					// if get the message, stop the timer
 					timer.cancel();
@@ -170,19 +249,25 @@ public class SingleClientThread extends Thread {
 					
 					if(passed)
 					{
-						boolean sent = SendMessage("AUTH_ACK");
+						boolean sent = Send(new Message(1, 55, 0, 0, null));
 						
 						int index = 0;
 						
 						// if sending message failed, resend five times. If still could not sent, disconnect
 						while(!sent)
 						{
-							sent = SendMessage("AUTH_ACK");
+							sent = Send(new Message(1, 55, 0, 0, null));
 							index++;
 							
 							if(index > 5)
 							{
 								// disconnect
+								try {
+									incoming.close();
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
 							}
 						}
 						
@@ -191,32 +276,44 @@ public class SingleClientThread extends Thread {
 					else
 					{
 						// if the authentication did not passed, send NAK message back and disconnect
-						boolean sent = SendMessage("AUTH_NAK");
+						boolean sent = Send(new Message(1, 56, 0, 0, null));
 						
 						// disconnect
+						try {
+							incoming.close();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
 					}
 				}
 				else
 				{
 					// if the message is not C_AUTH, resend server digest and public key
-					boolean sent = SendMessage("DIGEST_REQUEST");
+					boolean sent = Send(new Message(1, 51, 0, 0, null));
 					tmp++;
 					
 					// if send more than 5 times
-					if(tmp > 5)
+					if(tmp >= 5)
 					{
 						// disconnect
+						try {
+							incoming.close();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
 					}
 				}
 				break;
 			case WAIT_FOR_KEY:
 				// the current is WAIT_FOR_KEY, if the message received is the key message from client, go to next state, or send NAK message, and indicate the message desired
-				if(m.GetMessageType() == "SHARED_KEY")
+				if(m.GetMessageType() == 54)
 				{
 					// if get the message, stop the timer
 					timer.cancel();
 					
-					boolean sent = SendMessage("KEY_ACK");
+					boolean sent = Send(new Message(1, 57, 0, 0, null));
 					
 					if(sent)
 					{
@@ -229,30 +326,32 @@ public class SingleClientThread extends Thread {
 						// try five times, then disconnect
 						boolean b = false;
 						int index = 0;
-						while(!b)
+						if(!b)
 						{
 							// send KEY_ACK message, and indicate the server wants the username
-							b = SendMessage("KEY_ACK");
+							b = Send(new Message(1, 57, 0, 0, null));
 							index++;
 							if(index > 5)
 							{
 								// disconnect
+								try {
+									incoming.close();
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
 							}
 						}
 					}
 				}
 				else
 				{
-					// if the message type is not valid, send the NAK message with indicating the desired message
-					boolean sent = SendMessage("NAK");
-					tmp++;
-					if(tmp > 10)
-					{
-						// disconnect
-					}
+					// if the message type is not valid, send the Key Request message indicating the desired message and go back the former state
+					boolean sent = Send(new Message(1, 51, 0, 0, null));
+					state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
 				}
 				break;
-			case SECURED:
+			/*case SECURED:
 				// the current state is secured, which means the authentication stage has finished.
 				// Then ask the user to provide the username.
 				if(m.GetMessageType() == "USERNAME")
@@ -276,6 +375,7 @@ public class SingleClientThread extends Thread {
 						
 						// then the client and server connected
 						state.SetState(DFASTATE.CONNECTED);
+						ChatServer.socketlist.add(incoming);
 					}
 				}
 				else
@@ -288,7 +388,7 @@ public class SingleClientThread extends Thread {
 					while(!b)
 					{
 						// send KEY_ACK message, and indicate the server wants the username
-						b = SendMessage("KEY_ACK");
+						//b = SendMessage("KEY_ACK");
 						index++;
 						if(index > 5)
 						{
@@ -296,25 +396,30 @@ public class SingleClientThread extends Thread {
 						}
 					}
 				}
-				break;
+				break;*/
 			case CONNECTED:
 				// the current state is connected. The server is expecting the normal chat message
-				if(m.GetMessageType() == "Normal")
+				if(m.GetMessageType() == 21)
 				{
 					// if get the message, stop the timer
 					timer.cancel();
 					
-					BroadcastThread.AddMessage(m);
+					// add the message into the broadcast array in the broadcast thread
+					BroadcastThread.AddMessage(new Message(1, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
 				}
-				else if(m.GetMessageType() == "REQUEST_CLOSED")
+				else if(m.GetMessageType() == 41)
 				{
-					// if get the message, stop the timer
-					timer.cancel();
+					// means the client wants to disconnect, broadcast the client disconnected message to all active users
+					BroadcastThread bct = new BroadcastThread(new Message(1, 15, 0, 0, null));
 					
-					// disconnect
+					// delete the connection from connecting thread
+					if(ChatServer.GetSocketList().contains(this.incoming))
+						ChatServer.GetThreadsList().remove(this.incoming);
+					
 				}
 				break;
 			default:
+				System.exit(0);
 				break;
 				
 		}
@@ -351,7 +456,7 @@ public class SingleClientThread extends Thread {
 
 	private boolean AnalyzeDigest(Message m) {
 		// TODO Auto-generated method stub
-		return false;
+		return true;
 	}
 
 }
