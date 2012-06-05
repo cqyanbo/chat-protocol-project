@@ -16,6 +16,7 @@ public class SingleClientThread extends Thread {
 	private DataInputStream input = null;
 	private DataOutputStream output = null;
 	private BufferedReader in = null;
+	private String sharedKey = "";
 	private DFAState state = new DFAState();	// store the current state of this single conversation
 	private User user = new User();	// store the current user for this thread
 	
@@ -46,6 +47,10 @@ public class SingleClientThread extends Thread {
 	@SuppressWarnings("deprecation")
 	public void run()
 	{
+		// assign a unique userid for this user
+		// only add the new userid into usertable when the username is set up
+		this.Userid = UserTable.GetNewUserId();
+		
 		// after starting a new thread for new client
 		System.out.println("Inside of thread");
 		/*
@@ -90,8 +95,9 @@ public class SingleClientThread extends Thread {
 					}
 					
 					Send(m);
-					ChatServer.DeleteFromThreadList(this);
+					ThreadList.DeleteFromThreadList(this);
 					BroadcastThread.DeleteUser(user);
+					SocketList.DeleteSocket(incoming);
 					
 					// then broadcast message, without sending to the disconnecting client
 					m = new Message();
@@ -119,7 +125,12 @@ public class SingleClientThread extends Thread {
 				}
 				else
 				{
-					DFA(message);
+					try {
+						DFA(message);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 		}
@@ -150,8 +161,9 @@ public class SingleClientThread extends Thread {
 		return m;
 	}
 	
-	private void DFA(Message m)
+	private void DFA(Message m) throws IOException
 	{
+		System.out.println("The state is: " + state.GetState());
 		//System.out.println("Inside the DFA loop");
 		//System.out.println("The current message is: " + m.GetMessageType());
 		switch (state.GetState()){
@@ -160,30 +172,26 @@ public class SingleClientThread extends Thread {
 				if(m.GetMessageType() == 01)
 				{	
 					// send S_HELLO to the client
-					Message hello = new Message(1, 02, 0, 0, null);
+					Message hello = new Message(1, 02, this.Userid, 0, null);
 
 					// then, set the state to S_HELLO_SENT
 					if(Send(hello))
 					{
 						state.SetState(DFASTATE.HELLO_S_SENT);
+						System.out.println("The state is: " + state.GetState());
 					}
 					else
 					{
-						Message close = new Message(1, 42, this.user.GetUserid(), 0, null);
+						Message close = new Message(1, 42, this.Userid, 0, null);
 						Send(close); // do not need to care if this message would be received by client, because the client would disconnect automatically when timeout
+						incoming.close();
 					}
 				}
 				else
 				{
 					// disconnect
-					try {
-						incoming.close();
-						state.SetState(DFASTATE.DISCONNECTED); // set this thread's state to disconnected
-						this.equals(null); // stop this thread;
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+					incoming.close();
+					this.equals(null); // stop this thread;
 				}
 				break;
 			case HELLO_S_SENT:
@@ -201,15 +209,18 @@ public class SingleClientThread extends Thread {
 					if(sent)
 					{
 						state.SetState(DFASTATE.WAIT_FOR_ACK);
+						System.out.println("The state is: " + state.GetState());
 					}
 					else
 					{
 						// disconnect
+						incoming.close();
 					}
 				}
 				else
 				{
 					// disconnect
+					incoming.close();
 				}
 				break;
 			case WAIT_FOR_ACK:
@@ -225,6 +236,7 @@ public class SingleClientThread extends Thread {
 					if(sent)
 					{
 						state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
+						System.out.println("The state is: " + state.GetState());
 					}
 					else
 					{
@@ -234,6 +246,7 @@ public class SingleClientThread extends Thread {
 				else
 				{
 					// disconnect
+					incoming.close();
 				}
 				break;
 			case WAIT_FOR_C_AUTH:
@@ -242,9 +255,7 @@ public class SingleClientThread extends Thread {
 				{
 					// if get the message, stop the timer
 					timer.cancel();
-					
-					tmp = 0; // if get the correct message, set this index to 0
-					
+										
 					boolean passed = AnalyzeDigest(m);
 					
 					if(passed)
@@ -261,30 +272,20 @@ public class SingleClientThread extends Thread {
 							
 							if(index > 5)
 							{
-								// disconnect
-								try {
-									incoming.close();
-								} catch (IOException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}
+								incoming.close();
 							}
 						}
 						
 						state.SetState(DFASTATE.WAIT_FOR_KEY);
+						System.out.println("The state is: " + state.GetState());
 					}
 					else
 					{
 						// if the authentication did not passed, send NAK message back and disconnect
-						boolean sent = Send(new Message(1, 56, 0, 0, null));
+						Send(new Message(1, 56, 0, 0, null));
 						
 						// disconnect
-						try {
-							incoming.close();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
+						incoming.close();
 					}
 				}
 				else
@@ -297,12 +298,7 @@ public class SingleClientThread extends Thread {
 					if(tmp >= 5)
 					{
 						// disconnect
-						try {
-							incoming.close();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
+						incoming.close();
 					}
 				}
 				break;
@@ -313,6 +309,7 @@ public class SingleClientThread extends Thread {
 					// if get the message, stop the timer
 					timer.cancel();
 					
+					this.sharedKey = m.GetData().toString().trim().replace("\r\n", "\n");
 					boolean sent = Send(new Message(1, 57, 0, 0, null));
 					
 					if(sent)
@@ -320,6 +317,7 @@ public class SingleClientThread extends Thread {
 						tmp = 0;
 						// go to next state
 						state.SetState(DFASTATE.SECURED);
+						System.out.println("The state is: " + state.GetState());
 					}
 					else
 					{
@@ -330,16 +328,14 @@ public class SingleClientThread extends Thread {
 						{
 							// send KEY_ACK message, and indicate the server wants the username
 							b = Send(new Message(1, 57, 0, 0, null));
+							// go to next state
+							state.SetState(DFASTATE.SECURED);
+							System.out.println("The state is: " + state.GetState());
 							index++;
 							if(index > 5)
 							{
 								// disconnect
-								try {
-									incoming.close();
-								} catch (IOException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}
+								incoming.close();
 							}
 						}
 					}
@@ -349,33 +345,35 @@ public class SingleClientThread extends Thread {
 					// if the message type is not valid, send the Key Request message indicating the desired message and go back the former state
 					boolean sent = Send(new Message(1, 51, 0, 0, null));
 					state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
+					System.out.println("The state is: " + state.GetState());
 				}
 				break;
-			/*case SECURED:
+			case SECURED:
 				// the current state is secured, which means the authentication stage has finished.
 				// Then ask the user to provide the username.
-				if(m.GetMessageType() == "USERNAME")
+				if(m.GetMessageType() == 57)
 				{
 					// if get the message, stop the timer
 					timer.cancel();
 					
-					if(BroadcastThread.CheckUser(m.GetData().toString()))
+					if(UserTable.CheckUserName(m.GetData().toString()))
 					{
 						// if there is the same username, request a new username
-						boolean sent = SendMessage("NAK_username");
+						boolean sent = Send(new Message(1, 57, 0, 0, null));
+						System.out.println("The state is: " + state.GetState());
 					}
 					else
 					{
-						User user = new User();
-						user.SetIpAddress(incoming.getInetAddress());
-						user.SetPortNumber(incoming.getPort());
-						user.SetUsername(m.GetData().toString());
-						
-						BroadcastThread.AddUser(user);
+						// if this username is unique
+						UserTable.AddUserId(this.Userid, m.GetData().trim().replace("\r\n", "\n"));
 						
 						// then the client and server connected
 						state.SetState(DFASTATE.CONNECTED);
-						ChatServer.socketlist.add(incoming);
+						System.out.println("The state is: " + state.GetState());
+
+						// when connected, add this thread and socket into according lists
+						SocketList.AddSocketToList(incoming);
+						ThreadList.AddThreadToList(this);
 					}
 				}
 				else
@@ -383,20 +381,8 @@ public class SingleClientThread extends Thread {
 					// if the message is not username message
 					// ask for username again
 					// try five times, then disconnect
-					boolean b = false;
-					int index = 0;
-					while(!b)
-					{
-						// send KEY_ACK message, and indicate the server wants the username
-						//b = SendMessage("KEY_ACK");
-						index++;
-						if(index > 5)
-						{
-							// disconnect
-						}
-					}
 				}
-				break;*/
+				break;
 			case CONNECTED:
 				// the current state is connected. The server is expecting the normal chat message
 				if(m.GetMessageType() == 21)
@@ -407,15 +393,9 @@ public class SingleClientThread extends Thread {
 					// add the message into the broadcast array in the broadcast thread
 					BroadcastThread.AddMessage(new Message(1, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
 				}
-				else if(m.GetMessageType() == 41)
+				else
 				{
-					// means the client wants to disconnect, broadcast the client disconnected message to all active users
-					BroadcastThread bct = new BroadcastThread(new Message(1, 15, 0, 0, null));
-					
-					// delete the connection from connecting thread
-					if(ChatServer.GetSocketList().contains(this.incoming))
-						ChatServer.GetThreadsList().remove(this.incoming);
-					
+					// if the message is not the normal chat message, just ignore
 				}
 				break;
 			default:
