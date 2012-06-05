@@ -14,65 +14,6 @@ import Client.fakeClient;
  * This is the main class of serverside
  */
 public class ChatServer{
-
-	// store all of active sockets for broadcast
-	private static ArrayList<Socket> socketlist = new ArrayList<Socket>();
-	
-	// arraylist to store all of the threads from client
-	private static ArrayList<Thread> threadslist = new ArrayList<Thread>();
-	
-	public synchronized static void AddThreadToList(SingleClientThread _thread)
-	{
-		synchronized(threadslist)
-		{
-			threadslist.add(_thread);
-		}
-	}
-	
-	public synchronized static void DeleteFromThreadList(SingleClientThread _thread)
-	{
-		synchronized(threadslist)
-		{
-			threadslist.remove(_thread);
-		}
-	}
-	
-	public synchronized static void AddSocketToList(Socket _socket)
-	{
-		synchronized(socketlist)
-		{
-			socketlist.add(_socket);
-		}
-	}
-	
-	public synchronized static ArrayList<Thread> GetThreadsList()
-	{
-		synchronized(threadslist)
-		{
-			@SuppressWarnings("unchecked")
-			ArrayList<Thread> tmp = (ArrayList<Thread>) threadslist.clone();
-			return tmp;
-		}
-	}
-	
-	public synchronized static Thread GetThread(int index)
-	{
-		synchronized(threadslist)
-		{
-			return threadslist.get(index);
-		}
-		
-	}
-	
-	@SuppressWarnings("unchecked")
-	public synchronized static ArrayList<Socket> GetSocketList()
-	{
-		synchronized(socketlist)
-		{
-			ArrayList<Socket> tmp = (ArrayList<Socket>)socketlist.clone();
-			return tmp;
-		}
-	}
 	
 	public static void main(String[] args)
 	{
@@ -83,13 +24,12 @@ public class ChatServer{
 		BroadcastThread broadcast = new BroadcastThread();
 		broadcast.start();
 		System.out.println("broadcast thread has begun");
-		threadslist.add(0, broadcast);
+		ThreadList.AddBroadThread(broadcast);
 		// initialize the network connection
 		try
 		{
 			System.out.println("Start to listen: ");
 			serverSocket = new ServerSocket(9999);
-			System.out.println("There are " + threadslist.size() + " threads: " + threadslist.get(0).getName());
 			// start an infinite loop
 			while(true)
 			{

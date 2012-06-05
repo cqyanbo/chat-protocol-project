@@ -12,7 +12,7 @@ public class BroadcastThread extends Thread {
 	private static ArrayList<Message> broadlist = new ArrayList<Message>();	// this is the place for storing all the message that would be
 	private static ArrayList<User> userlist = new ArrayList<User>();	// store users
 	private Message m;
-	private ArrayList<Thread> clientsThreads = ChatServer.GetThreadsList();
+	private ArrayList<Thread> clientsThreads = ThreadList.GetThreadsList();
 	private static Lock lock = new ReentrantLock();
 
 	BroadcastThread( Message _m)
