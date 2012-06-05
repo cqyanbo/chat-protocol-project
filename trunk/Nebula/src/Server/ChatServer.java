@@ -34,6 +34,7 @@ public class ChatServer{
 			while(true)
 			{
 				Socket incoming = serverSocket.accept();
+				incoming.setSoTimeout(60000);
 				System.out.println("connected with " + incoming.getInetAddress());
 				
 				// spawn a thread to handle the request

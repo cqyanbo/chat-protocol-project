@@ -19,7 +19,7 @@ public class BroadcastThread extends Thread {
 	{
 		System.out.println("inside the broadcast");
 		this.m = _m;
-		BroadcastThread.AddMessage(m);
+		AddMessage(m);
 	}
 	
 	BroadcastThread()
@@ -27,7 +27,7 @@ public class BroadcastThread extends Thread {
 		
 	}
 	
-	public static void AddMessage(Message o)
+	public void AddMessage(Message o)
 	{
 		lock.lock();
 		try
@@ -40,7 +40,7 @@ public class BroadcastThread extends Thread {
 		}
 	}
 	
-	public static void AddMessageList(ArrayList<Message> o)
+	public void AddMessageList(ArrayList<Message> o)
 	{
 		lock.lock();
 		try
@@ -53,7 +53,7 @@ public class BroadcastThread extends Thread {
 		}
 	}
 	
-	public static ArrayList<Message> GetMessageList()
+	public ArrayList<Message> GetMessageList()
 	{
 		lock.lock();
 		try
@@ -66,7 +66,7 @@ public class BroadcastThread extends Thread {
 		}
 	}
 	
-	public static void AddUser(User user)
+	public void AddUser(User user)
 	{
 		lock.lock();
 		try
@@ -79,7 +79,7 @@ public class BroadcastThread extends Thread {
 		}
 	}
 	
-	public static boolean CheckUser(String username)
+	public boolean CheckUser(String username)
 	{
 		lock.lock();
 		try
@@ -101,7 +101,7 @@ public class BroadcastThread extends Thread {
 		}
 	}
 	
-	public static void DeleteUser(User user)
+	public void DeleteUser(User user)
 	{
 		lock.lock();
 		
@@ -156,13 +156,20 @@ public class BroadcastThread extends Thread {
 	
 	private void BroadCastMessage(Message message)
 	{
-		while(clientsThreads.size() > 0)
+		ArrayList<SingleClientThread> threads = (ArrayList<SingleClientThread>) ThreadList.GetThreadsList().clone();
+		while(threads.size() > 0)
 		{
-			for(int i = 1; i< clientsThreads.size(); i++)
+			for(int i = 1; i< threads.size(); i++)
 			{
-				((SingleClientThread)clientsThreads.get(i)).Send(m);
+				// if the thread is alive and is not the message sender
+				if(threads.get(i).isAlive() && threads.get(i).GetUserid() == message.GetUserid())
+				{
+					threads.get(i).Send(message);
+				}
 			}
 		}
+		
+		System.out.println("Has published all messages in the broadcast list");
 	}
 	
 }
