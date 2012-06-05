@@ -14,88 +14,97 @@ import Client.fakeClient;
  * This is the main class of serverside
  */
 public class ChatServer{
+
+	// store all of active sockets for broadcast
+	private static ArrayList<Socket> socketlist = new ArrayList<Socket>();
 	
-	private static ArrayList<Message> broadlist = new ArrayList<Message>();	// this is the place for storing all the message that would be
-	private static ArrayList<User> userlist = new ArrayList<User>();	// store users
+	// arraylist to store all of the threads from client
+	private static ArrayList<Thread> threadslist = new ArrayList<Thread>();
 	
-	public static synchronized void AddMessage(Message o)
+	public synchronized static void AddThreadToList(SingleClientThread _thread)
 	{
-		broadlist.add(o);
-	}
-	
-	public static synchronized void AddMessageList(ArrayList o)
-	{
-		broadlist.addAll(o);
-	}
-	
-	public static synchronized ArrayList GetMessageList()
-	{
-		return broadlist;
-	}
-	
-	public static synchronized void AddUser(User user)
-	{
-		userlist.add(user);
-	}
-	
-	public static synchronized boolean CheckUser(String username)
-	{
-		for(User u : userlist)
+		synchronized(threadslist)
 		{
-			if(u.GetUsername() == username.trim())
-			{
-				return true;
-			}
-			
-		}
-		
-		return false;
-	}
-	
-	public static synchronized void DeleteUser(User user)
-	{
-		int index = 0;
-		
-		for(User u : userlist)
-		{
-			if(u.GetUsername() == user.GetUsername())
-			{
-				userlist.remove(index);
-				break;
-			}
-			
-			index++;
+			threadslist.add(_thread);
 		}
 	}
-	@SuppressWarnings("deprecation")
+	
+	public synchronized static void DeleteFromThreadList(SingleClientThread _thread)
+	{
+		synchronized(threadslist)
+		{
+			threadslist.remove(_thread);
+		}
+	}
+	
+	public synchronized static void AddSocketToList(Socket _socket)
+	{
+		synchronized(socketlist)
+		{
+			socketlist.add(_socket);
+		}
+	}
+	
+	public synchronized static ArrayList<Thread> GetThreadsList()
+	{
+		synchronized(threadslist)
+		{
+			@SuppressWarnings("unchecked")
+			ArrayList<Thread> tmp = (ArrayList<Thread>) threadslist.clone();
+			return tmp;
+		}
+	}
+	
+	public synchronized static Thread GetThread(int index)
+	{
+		synchronized(threadslist)
+		{
+			return threadslist.get(index);
+		}
+		
+	}
+	
+	@SuppressWarnings("unchecked")
+	public synchronized static ArrayList<Socket> GetSocketList()
+	{
+		synchronized(socketlist)
+		{
+			ArrayList<Socket> tmp = (ArrayList<Socket>)socketlist.clone();
+			return tmp;
+		}
+	}
+	
 	public static void main(String[] args)
 	{
-	
-		// arraylist to store all of the threads from client
-		ArrayList<SingleClientThread> threadslist = new ArrayList<SingleClientThread>();
 		
 		// start a serversocket for listening client's connection requests
 		ServerSocket serverSocket = null;
-
+		
+		BroadcastThread broadcast = new BroadcastThread();
+		broadcast.start();
+		System.out.println("broadcast thread has begun");
+		threadslist.add(0, broadcast);
 		// initialize the network connection
 		try
 		{
-			serverSocket = new ServerSocket(7000);
-			
+			System.out.println("Start to listen: ");
+			serverSocket = new ServerSocket(9999);
+			System.out.println("There are " + threadslist.size() + " threads: " + threadslist.get(0).getName());
 			// start an infinite loop
 			while(true)
 			{
 				Socket incoming = serverSocket.accept();
+				System.out.println("connected with " + incoming.getInetAddress());
 				
 				// spawn a thread to handle the request
 				SingleClientThread singleClientThread = new SingleClientThread(incoming);
-				threadslist.add(singleClientThread);	// store this thread to threads list
+				System.out.println("Start to run single thread for this client");
 				singleClientThread.start();
 			}
 		}
 		catch(Exception e)
 		{
-			e.printStackTrace();
+			System.out.println("The server could not be connected now.");
 		}
 		finally
 		{	

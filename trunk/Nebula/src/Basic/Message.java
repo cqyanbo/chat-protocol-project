@@ -7,12 +7,14 @@ import java.io.ObjectOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Vector;
 
 import Server.DFAState;
 import Server.DFAState.DFASTATE;
@@ -30,8 +32,8 @@ public class Message {
 	private DFASTATE state;
 
 	private int version;
-	private String MessageType = ""; // this should be a hex string
-	private long UserID;
+	private int MessageType; // this should be a hex string
+	private int UserID;
 	private int MessageLength = 0;
 	private int Reserved = 0;
 	private String Data = "";
@@ -41,6 +43,28 @@ public class Message {
 	private String ACK_MessageType = "";
 	private boolean ACK = false;
 	private long Checksum;
+	
+	public Message()
+	{
+		
+	}
+	
+	public Message(int _version, int _messagetype, int _userid, int _messagelength, String _data)
+	{
+		try {
+			this.SetVersion(_version);
+			this.SetData(_data);
+			if(_data != null)
+				SetMessageLength(_data.length());
+			else
+				SetMessageLength(0);
+			this.SetMessageType(_messagetype);
+			this.SetUserid(_userid);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 	
 	/*
 	 * SET
@@ -53,33 +77,16 @@ public class Message {
 			throw new IllegalStateException();
 	}
 	
-	public void SetMessageType(String _messagetype) throws Exception
-	{
-		/*DFASTATE[] dfa = DFASTATE.values();
-		boolean a = false;
-		for(int i = 0; i< dfa.length; i++)
-		{
-			if(dfa[i].name().equals(_messagetype))
-			{
-				a = true;
-			}
-		}*/
-		if(_messagetype.length() <= 16)
+	
+	public void SetMessageType(int _messagetype) throws Exception
+	{	
+		if(_messagetype <= 0x11111111 )
 			this.MessageType = _messagetype;
 		else
 			throw new IllegalStateException();
 	}
 	
-	public void SetMessageType(int _messagetype) throws Exception
-	{	
-		String hs = this.toBinary(_messagetype, 8);
-		if(hs.length() <= 16 )
-			this.MessageType = hs;
-		else
-			throw new IllegalStateException();
-	}
-	
-	public void SetUserid(long _userid) throws Exception
+	public void SetUserid(int _userid) throws Exception
 	{
 		String userid = this.toBinary(_userid, 16);
 		
@@ -89,20 +96,27 @@ public class Message {
 			throw new IllegalStateException();
 	}
 	
-	public void SetMessageLength() throws Exception
+	public void SetMessageLength(int _messagelength) throws Exception
 	{
 		if(fromByteArray(Data.getBytes()).length() < 2244)
-			this.MessageLength = fromByteArray(Data.getBytes()).length();
+			this.MessageLength = _messagelength;
 		else
 			throw new IllegalStateException();
 	}
 	
 	public void SetData(String _data) throws Exception
 	{
-		if(_data.length() <= 140)
-			this.Data = _data;
+		if(_data != null)
+		{
+			if(_data.length() <= 245 || _data == null)
+				this.Data = _data;
+			else
+				throw new IllegalStateException();
+		}
 		else
-			throw new IllegalStateException();
+		{
+			_data = null;
+		}
 	}
 	
 	
@@ -114,7 +128,7 @@ public class Message {
 		return this.version;
 	}
 	
-	public String GetMessageType()
+	public int GetMessageType()
 	{
 		return this.MessageType;
 	}
@@ -355,24 +369,86 @@ public class Message {
 		  return binary.toString();
 	}
 	
+	// convert int to char[]
+	private char[] IntToCharArray(long a)
+	{
+		String tmp = Integer.toBinaryString((int) a);
+		char[] ca = tmp.toCharArray();
+		if(ca.length > length)
+		{
+			System.out.println("wrong");
+		}
+		else if(ca.length < length)
+		{
+			char[] tmp1 = new char[length-ca.length];
+			for(int i = 0; i < tmp1.length; i++)
+			{
+				tmp1[i] = '0';
+			}
+			
+			ca = concat(tmp1, ca);
+		}
+		
+		
+		return ca;
+	}
+	
+	private char[] concat(char[] header, char[] cs) {
+		  char[] result = Arrays.copyOf(header, header.length + cs.length);
+		  System.arraycopy(cs, 0, result, header.length, cs.length);
+		  return result;
+		}
+	
 	/*
 	 * Methods
 	 */
 	
 	// store the how packet as byte array
-	public String Packet2ByteArray()
+	public byte[] Packet2ByteArray()
 	{
-		Map jsonObject=new LinkedHashMap();		
-		jsonObject.put("version", new Integer(this.version));
-		jsonObject.put("messagetype", new String(this.MessageType));
-		jsonObject.put("userid", this.UserID);
-		jsonObject.put("reserved", this.Reserved);
-		jsonObject.put("messagelength", this.MessageLength);
-		jsonObject.put("data", this.Data);
+
+		char[] header = this.IntToCharArray(version, 4);
+		for(int i = 0; i < header.length; i++)
+			System.out.print(header[i]);
+		System.out.println();
+		header = concat(header, this.IntToCharArray(this.MessageType, 8));
+		header = concat(header, this.IntToCharArray(this.UserID, 16));
+		header = concat(header, this.IntToCharArray(this.Reserved, 4));
+		header = concat(header, this.IntToCharArray(this.MessageLength, 8));
 		
-		return JSONValue.toJSONString(jsonObject).toString();
+		
+		String data = this.Data;
+		
+		header = concat(header, data.toCharArray());
+		String tmp = new String(header);
+		byte[] result = tmp.getBytes();
+		return tmp.getBytes();
 	}
 	
+	private char[] IntToCharArray(int a, int i) {
+		String tmp = Integer.toBinaryString(a);
+		//System.out.println("a is " + a + " tmp is " + tmp + " has " + tmp.length() + " length");
+		char[] ca = tmp.toCharArray();
+		if(ca.length > i)
+		{
+			System.out.println("wrong");
+		}
+		else if(ca.length < i)
+		{
+			//System.out.println("length - ca = " + (length - ca.length));
+			char[] tmp1 = new char[i-ca.length];
+			for(int i1 = 0; i1 < tmp1.length; i1++)
+			{
+				tmp1[i1] = '0';
+			}
+			
+			ca = concat(tmp1, ca);
+		}
+		
+		return ca;
+	}
+
+
 	public static String toText(String s){
 		
 		String s2 = "";   
@@ -387,83 +463,49 @@ public class Message {
 		return s2;
     }
 	
-	// convert a byte array to message object
-	public Message ByteArrayToMessage(String packet)
+	private static int CharArrayToInt(char[] array)
 	{
-		 Message m = new Message();
-		 JSONParser parser = new JSONParser();
-		  ContainerFactory containerFactory = new ContainerFactory(){
-		    public List creatArrayContainer() {
-		      return new LinkedList();
-		    }
-
-		    public Map createObjectContainer() {
-		      return new LinkedHashMap();
-		    }
-		                        
-		  };
-		  
-		  try{
-			    Map json = (Map)parser.parse(packet, containerFactory);
-			    Iterator iter = json.entrySet().iterator();
-			    while(iter.hasNext()){
-			      Map.Entry entry = (Map.Entry)iter.next();
-			      if(entry.getKey().toString() == "version")
-			      {
-			    	  try {
-						m.SetVersion(Integer.parseInt(entry.getValue().toString()));
-					} catch (NumberFormatException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} catch (Exception e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-			      }
-				else if(entry.getKey().toString() == "messagetype")
-				{
-					try {
-						m.SetMessageType(entry.getValue().toString());
-					} catch (Exception e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				else if(entry.getKey().toString() == "userid")
-				{
-					try {
-						m.SetUserid(Long.valueOf(entry.getValue().toString()));
-					} catch (NumberFormatException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} catch (Exception e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				else if(entry.getKey().toString() == "data")
-				{
-					try {
-						m.SetData(entry.getValue().toString());
-					} catch (Exception e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-			      
-			    }
-			                        
-			  }
-			  catch(ParseException pe){
-			    System.out.println(pe);
-			  }
+		return Integer.parseInt(new String(array), 2);
+	}
+	
+	private static int CharArrayToInt(char[] array, int from, int end)
+	{
+		char[] tmp = new char[end - from + 1];
+		for(int i = from; i <= end; i++)
+		{
+			tmp[i-from] = array[i];
+		}
 		
-			  try {
-				m.SetMessageLength();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		return Integer.parseInt(new String(tmp), 2);
+	}
+	
+	private static String CharArrayToString(char[] array, int from, int end)
+	{
+		char[] tmp = new char[end - from + 1];
+		for(int i = from; i <= end; i++)
+		{
+			tmp[i-from] = array[i];
+		}
+		
+		return new String(tmp);
+	}
+	
+	// convert a byte array to message object
+	public static Message ByteArrayToMessage(char[] packet)
+	{
+		char[] tmp = packet;
+		Message m = new Message();
+		try {
+			m.SetVersion(CharArrayToInt(tmp, 0, 3));
+			m.SetMessageType(CharArrayToInt(tmp, 4, 11));
+			m.SetUserid(CharArrayToInt(tmp, 12, 27));
+			m.SetMessageLength(CharArrayToInt(tmp, 32, 39));
+			m.SetData(CharArrayToString(tmp, 40, packet.length-1).replace("\r\n", "\n"));
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		return m;
 	}
 	
@@ -495,21 +537,19 @@ public class Message {
 	public static void main(String[] args)
 	{
 		Message m = new Message();
-		String a = "";
+		byte[] a = null;
 		try {
 			m.SetData("Test");
-			m.SetMessageLength();
+			m.SetMessageLength(m.GetData().length());
 			m.SetMessageType(12);
 			m.SetVersion(1);
 			m.SetUserid(123);
 			
 			a = m.Packet2ByteArray();
 			
-			System.out.println("==" + a);
-			System.out.println(a.length());
-			
-			
-			Message test = m.ByteArrayToMessage(a);
+			System.out.println(new String(a));
+			System.out.println(new String((new String(a)).toCharArray()));
+			Message test = Message.ByteArrayToMessage((new String(a)).toCharArray());
 			System.out.println(test.MessageType);
 			 
 		} catch (Exception e) {
