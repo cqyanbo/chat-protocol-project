@@ -11,7 +11,21 @@ public class UserTable {
 	{
 		synchronized(userTable)
 		{
+			for(int i = 0; i < userTable.size(); i++)
+			{
+				if(!userTable.containsKey(i+1))
+					return i+1;
+			}
+			
 			return userTable.size();
+		}
+	}
+	
+	public static void DeleteUserId(int Id)
+	{
+		synchronized(userTable)
+		{
+			userTable.remove(Id);
 		}
 	}
 	

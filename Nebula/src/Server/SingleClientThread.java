@@ -61,6 +61,12 @@ public class SingleClientThread extends Thread {
 			while(true)
 			{
 				byte[] buffer = new byte[285];
+				
+				if(!this.isAlive())
+				{
+					break;
+				}
+				
 				if(incoming.isClosed() || !incoming.isConnected())
 				{
 					break;
@@ -96,7 +102,7 @@ public class SingleClientThread extends Thread {
 					
 					Send(m);
 					ThreadList.DeleteFromThreadList(this);
-					BroadcastThread.DeleteUser(user);
+					ThreadList.GetBroadThread().DeleteUser(user);
 					SocketList.DeleteSocket(incoming);
 					
 					// then broadcast message, without sending to the disconnecting client
@@ -121,6 +127,17 @@ public class SingleClientThread extends Thread {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
+					
+					
+					// delete this user from user table
+					UserTable.DeleteUserId(Userid);
+					
+					// delete this thread from thread list
+					ThreadList.DeleteFromThreadList(this);
+					
+					// delete this socket from socket list
+					SocketList.DeleteSocket(incoming);
+					
 					break;
 				}
 				else
@@ -161,6 +178,7 @@ public class SingleClientThread extends Thread {
 		return m;
 	}
 	
+	@SuppressWarnings("deprecation")
 	private void DFA(Message m) throws IOException
 	{
 		System.out.println("The state is: " + state.GetState());
@@ -185,6 +203,7 @@ public class SingleClientThread extends Thread {
 						Message close = new Message(1, 42, this.Userid, 0, null);
 						Send(close); // do not need to care if this message would be received by client, because the client would disconnect automatically when timeout
 						incoming.close();
+						this.destroy();
 					}
 				}
 				else
@@ -202,8 +221,8 @@ public class SingleClientThread extends Thread {
 					// TODO: get digest and public key from security method
 					String Digest = "digest";
 					String PublicKey = "publick";
-					String DataField = Digest+PublicKey;
-					Message digest = new Message(1, 53, this.user.GetUserid(), DataField.length(), DataField);
+					String DataField = XMLBuilder(Digest, PublicKey);
+					Message digest = new Message(1, 53, this.Userid, DataField.length(), DataField);
 					boolean sent = Send(digest);
 					
 					if(sent)
@@ -226,10 +245,7 @@ public class SingleClientThread extends Thread {
 			case WAIT_FOR_ACK:
 				// the current state is WAIT_FOR_ACK, the server is waiting for the authentication from the client side
 				if(m.GetMessageType() == 55)
-				{
-					// if get the message, stop the timer
-					timer.cancel();
-					
+				{	
 					// send the digest request message to client
 					boolean sent = Send(new Message(1, 51, 0, 0, null));
 					
@@ -253,29 +269,12 @@ public class SingleClientThread extends Thread {
 				// the current state is WAIT_FOR_C_AUTH
 				if(m.GetMessageType() == 52)
 				{
-					// if get the message, stop the timer
-					timer.cancel();
-										
 					boolean passed = AnalyzeDigest(m);
 					
 					if(passed)
 					{
 						boolean sent = Send(new Message(1, 55, 0, 0, null));
-						
-						int index = 0;
-						
-						// if sending message failed, resend five times. If still could not sent, disconnect
-						while(!sent)
-						{
-							sent = Send(new Message(1, 55, 0, 0, null));
-							index++;
-							
-							if(index > 5)
-							{
-								incoming.close();
-							}
-						}
-						
+												
 						state.SetState(DFASTATE.WAIT_FOR_KEY);
 						System.out.println("The state is: " + state.GetState());
 					}
@@ -299,22 +298,19 @@ public class SingleClientThread extends Thread {
 					{
 						// disconnect
 						incoming.close();
+						this.destroy();
 					}
 				}
 				break;
 			case WAIT_FOR_KEY:
 				// the current is WAIT_FOR_KEY, if the message received is the key message from client, go to next state, or send NAK message, and indicate the message desired
 				if(m.GetMessageType() == 54)
-				{
-					// if get the message, stop the timer
-					timer.cancel();
-					
+				{	
 					this.sharedKey = m.GetData().toString().trim().replace("\r\n", "\n");
 					boolean sent = Send(new Message(1, 57, 0, 0, null));
 					
 					if(sent)
 					{
-						tmp = 0;
 						// go to next state
 						state.SetState(DFASTATE.SECURED);
 						System.out.println("The state is: " + state.GetState());
@@ -336,6 +332,7 @@ public class SingleClientThread extends Thread {
 							{
 								// disconnect
 								incoming.close();
+								this.destroy();
 							}
 						}
 					}
@@ -353,8 +350,6 @@ public class SingleClientThread extends Thread {
 				// Then ask the user to provide the username.
 				if(m.GetMessageType() == 57)
 				{
-					// if get the message, stop the timer
-					timer.cancel();
 					
 					if(UserTable.CheckUserName(m.GetData().toString()))
 					{
@@ -391,7 +386,7 @@ public class SingleClientThread extends Thread {
 					timer.cancel();
 					
 					// add the message into the broadcast array in the broadcast thread
-					BroadcastThread.AddMessage(new Message(1, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
+					ThreadList.GetBroadThread().AddMessage(new Message(1, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
 				}
 				else
 				{
@@ -432,6 +427,11 @@ public class SingleClientThread extends Thread {
 		//    Then, delete the user information from user list of current group
 		
 		// 10. when get a disconnect message, 
+	}
+
+	private String XMLBuilder(String digest, String publicKey) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	private boolean AnalyzeDigest(Message m) {

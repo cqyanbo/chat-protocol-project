@@ -52,11 +52,14 @@ public class ThreadList {
 		}
 	}
 	
-	public static Thread GetThread(int index)
+	public static Thread GetThread(Thread _thread)
 	{
 		synchronized(threadslist)
 		{
-			return threadslist.get(index);
+			if(threadslist.contains(_thread))
+				return (Thread)threadslist.get(threadslist.indexOf(_thread));
+			else
+				return null;
 		}
 		
 	}
