@@ -49,9 +49,8 @@ public class Message {
 		
 	}
 	
-	public Message(int _version, int _messagetype, int _userid, int _messagelength, String _data)
+	public Message(int _version, int _messagetype, int _userid, int _messagelength, String _data) throws Exception
 	{
-		try {
 			this.SetVersion(_version);
 			this.SetData(_data);
 			if(_data != null)
@@ -60,10 +59,6 @@ public class Message {
 				SetMessageLength(0);
 			this.SetMessageType(_messagetype);
 			this.SetUserid(_userid);
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 	
 	/*
