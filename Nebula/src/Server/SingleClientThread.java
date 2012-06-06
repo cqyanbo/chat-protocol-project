@@ -20,7 +20,6 @@ import Basic.Message;
 
 public class SingleClientThread extends Thread {
 	
-	private Timer timer = new Timer();
 	private Socket incoming;
 	private int Userid;
 	private DataInputStream input = null;
@@ -29,9 +28,6 @@ public class SingleClientThread extends Thread {
 	private String sharedKey = "";
 	private DFAState state = new DFAState();	// store the current state of this single conversation
 	private User user = new User();	// store the current user for this thread
-	
-	
-	private int tmp = 0; // index of times of sending digest to client
 	
 	SingleClientThread(Socket _incoming) throws IOException
 	{
@@ -219,7 +215,6 @@ public class SingleClientThread extends Thread {
 		return m;
 	}
 	
-	@SuppressWarnings("deprecation")
 	private void DFA(Message m) throws Exception
 	{
 		//System.out.println("The Thread-"+this.getId()+"'s state is: " + state.GetState());
@@ -323,7 +318,7 @@ public class SingleClientThread extends Thread {
 					
 					if(passed)
 					{
-						boolean sent = Send(new Message(1, 55, 0, 0, null));
+						Send(new Message(1, 55, 0, 0, null));
 												
 						state.SetState(DFASTATE.WAIT_FOR_KEY);
 						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
@@ -394,7 +389,7 @@ public class SingleClientThread extends Thread {
 					if(UserTable.CheckUserName(m.GetData().toString()))
 					{
 						// if there is the same username, request a new username by sending Duplicate User message
-						boolean sent = Send(new Message(1, 13, 0, 0, null));
+						Send(new Message(1, 13, 0, 0, null));
 						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 					}
 					else
