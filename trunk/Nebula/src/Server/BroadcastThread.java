@@ -95,6 +95,13 @@ public class BroadcastThread extends Thread {
 	private void BroadCastMessage(Message message)
 	{
 		ArrayList<SingleClientThread> threads = (ArrayList<SingleClientThread>) ThreadList.GetThreadsList().clone();
+		
+		System.out.print("There are: ");
+		
+		for(int i = 0; i < threads.size(); i++)
+		{
+			System.out.println(message.GetData());
+		}
 		while(threads.size() > 0)
 		{
 			for(int i = 1; i< threads.size(); i++)

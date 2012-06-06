@@ -121,26 +121,33 @@ public class SingleClientThread extends Thread {
 					
 					Send(m);
 					
-					// then broadcast message, without sending to the disconnecting client
-					m = new Message();
-					
-					try {
-						m.SetVersion(1);
-						m.SetMessageType(15);
-						m.SetUserid(this.user.GetUserid());
-						m.SetMessageLength(0);
-						m.SetData(null);
-					} catch (Exception e) {
-						// if failed...disconnect directly
+					if(state.GetState() == DFASTATE.CONNECTED)
+					{
+						// only under the connected state, the server need to broadcast message, without sending to the disconnecting client
+						m = new Message();
+						
+						try {
+							m.SetVersion(1);
+							m.SetMessageType(15);
+							m.SetUserid(this.user.GetUserid());
+							m.SetMessageLength(0);
+							m.SetData(null);
+						} catch (Exception e) {
+							// if failed...disconnect directly
+							this.DeleteAndClose();
+							break;
+						}
+						
+						// give this message to broadcast thread
+						BroadcastThread broadcast = new BroadcastThread(m);
+						broadcast.start();
 						this.DeleteAndClose();
-						break;
+						System.out.println("Threads in the list: \n" + ThreadList.ToString());
 					}
 					
-					// give this message to broadcast thread
-					BroadcastThread broadcast = new BroadcastThread(m);
-					broadcast.start();
-					this.DeleteAndClose();
-					System.out.println("Threads in the list: \n" + ThreadList.ToString());
+					
+					System.out.println(this.getName() + " has been " + incoming.isClosed());
+					
 					break;
 				}
 				else
@@ -246,6 +253,7 @@ public class SingleClientThread extends Thread {
 				{
 					// if the message type is not correct, send out E2
 					Send(new Message(1, 0xE2, 0, 0, null));
+					Send(new Message(1, 42, this.Userid, 0, null));
 					// disconnect
 					incoming.close();
 					break;
@@ -282,7 +290,8 @@ public class SingleClientThread extends Thread {
 				{
 					// if the message type is not correct, send out E2
 					Send(new Message(1, 0xE2, 0, 0, null));
-					
+					Send(new Message(1, 42, this.Userid, 0, null));
+
 					// disconnect
 					incoming.close();
 					break;
@@ -460,9 +469,9 @@ public class SingleClientThread extends Thread {
 
 	private boolean AnalyzeDigest(Message m) {
 		// TODO Auto-generated method stub
-		String XMLdata = m.GetData();
-		String d = ParseXML(XMLdata, "digest");
-		String p = ParseXML(XMLdata, "publickey");
+		//String XMLdata = m.GetData();
+		//String d = ParseXML(XMLdata, "digest");
+		//String p = ParseXML(XMLdata, "publickey");
 		
 		//TODO: digest check
 		return true;
