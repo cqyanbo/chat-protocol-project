@@ -29,6 +29,10 @@ public class TestClient {
 
 	        while(true)
 	        {
+	        	if(!connection.isConnected())
+	        	{
+	        		connection.close();
+	        	}
 	            /** Instantiate an OutputStreamWriter object with the optional character
 	             * encoding.
 	             */
@@ -60,6 +64,11 @@ public class TestClient {
 	            Message message = GetNewMessage(isr);
 	            
 	            System.out.println("Got " + message.GetMessageType() + "Message");
+	            
+	            if(message.GetMessageType() == 42)
+	            {
+	            	connection.close();
+	            }
 
 	            /** Close the socket connection. */
 	            //connection.close();
