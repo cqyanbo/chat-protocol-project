@@ -33,7 +33,7 @@ public class SingleClientThread extends Thread {
 	
 	private int tmp = 0; // index of times of sending digest to client
 	
-	SingleClientThread(Socket _incoming)
+	SingleClientThread(Socket _incoming) throws IOException
 	{
 		this.incoming = _incoming;
 		try {
@@ -41,9 +41,10 @@ public class SingleClientThread extends Thread {
 			in = new BufferedReader(new InputStreamReader(input));
 			output = new DataOutputStream(incoming.getOutputStream());
 			System.out.println("Get I/O Stream Correctly");
+			System.out.println("Threads in the list: \n" + ThreadList.ToString());
 		} catch (IOException e) {
-			// stop this thread
-			this.stop();
+			// stop this socket
+			incoming.close();
 		}
 		
 	}
@@ -54,7 +55,6 @@ public class SingleClientThread extends Thread {
 	}
 	
 	// run method
-	@SuppressWarnings("deprecation")
 	public void run()
 	{
 		// assign a unique userid for this user
@@ -144,6 +144,7 @@ public class SingleClientThread extends Thread {
 					BroadcastThread broadcast = new BroadcastThread(m);
 					broadcast.start();
 					this.DeleteAndClose();
+					System.out.println("Threads in the list: \n" + ThreadList.ToString());
 					break;
 				}
 				else
@@ -221,7 +222,7 @@ public class SingleClientThread extends Thread {
 	@SuppressWarnings("deprecation")
 	private void DFA(Message m) throws Exception
 	{
-		System.out.println("The state is: " + state.GetState());
+		//System.out.println("The Thread-"+this.getId()+"'s state is: " + state.GetState());
 		//System.out.println("Inside the DFA loop");
 		//System.out.println("The current message is: " + m.GetMessageType());
 		switch (state.GetState()){
@@ -236,7 +237,7 @@ public class SingleClientThread extends Thread {
 					if(Send(hello))
 					{
 						state.SetState(DFASTATE.HELLO_S_SENT);
-						System.out.println("The state is: " + state.GetState());
+						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 					}
 					else
 					{
@@ -261,11 +262,9 @@ public class SingleClientThread extends Thread {
 				{
 					// send server's digest and public key to client
 					// TODO: get digest and public key from security method
-					String Digest = "digest";
-					String PublicKey = "publick";
 					String DataField = null;
 					try {
-						DataField = XMLBuilder(Digest, PublicKey);
+						DataField = XMLBuilder();
 					} catch (ParserConfigurationException e) {
 						e.printStackTrace();
 					}
@@ -275,7 +274,7 @@ public class SingleClientThread extends Thread {
 					if(sent)
 					{
 						state.SetState(DFASTATE.WAIT_FOR_ACK);
-						System.out.println("The state is: " + state.GetState());
+						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 					}
 					else
 					{
@@ -304,7 +303,7 @@ public class SingleClientThread extends Thread {
 					if(sent)
 					{
 						state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
-						System.out.println("The state is: " + state.GetState());
+						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 					}
 				}
 				else
@@ -327,7 +326,7 @@ public class SingleClientThread extends Thread {
 						boolean sent = Send(new Message(1, 55, 0, 0, null));
 												
 						state.SetState(DFASTATE.WAIT_FOR_KEY);
-						System.out.println("The state is: " + state.GetState());
+						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 					}
 					else
 					{
@@ -356,7 +355,7 @@ public class SingleClientThread extends Thread {
 					{
 						// go to next state
 						state.SetState(DFASTATE.SECURED);
-						System.out.println("The state is: " + state.GetState());
+						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 					}
 					else
 					{
@@ -369,7 +368,7 @@ public class SingleClientThread extends Thread {
 							b = Send(new Message(1, 57, 0, 0, null));
 							// go to next state
 							state.SetState(DFASTATE.SECURED);
-							System.out.println("The state is: " + state.GetState());
+							System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 							index++;
 							if(index > 5)
 							{
@@ -396,7 +395,7 @@ public class SingleClientThread extends Thread {
 					{
 						// if there is the same username, request a new username by sending Duplicate User message
 						boolean sent = Send(new Message(1, 13, 0, 0, null));
-						System.out.println("The state is: " + state.GetState());
+						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 					}
 					else
 					{
@@ -408,11 +407,12 @@ public class SingleClientThread extends Thread {
 						
 						// then the client and server connected
 						state.SetState(DFASTATE.CONNECTED);
-						System.out.println("The state is: " + state.GetState());
+						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 
 						// when connected, add this thread and socket into according lists
 						SocketList.AddSocketToList(incoming);
 						ThreadList.AddThreadToList(this);
+						System.out.println("Threads in the list: \n" + ThreadList.ToString());
 					}
 				}
 				else
@@ -443,23 +443,13 @@ public class SingleClientThread extends Thread {
 				
 	}
 
-	private String XMLBuilder(String digest, String publicKey) throws ParserConfigurationException {
-		/*digest = GetDigest();
-		publicKey = GetPublicKey();
-		DocumentBuilderFactory dbfac = DocumentBuilderFactory.newInstance();
-        DocumentBuilder docBuilder = dbfac.newDocumentBuilder();
-        Document doc = docBuilder.newDocument();
+	private String XMLBuilder() throws ParserConfigurationException {
+		String digest = GetDigest();
+		String publicKey = GetPublicKey();
+		
+		String tmp = "<digest>" + digest + "</digest>" + "<publickey>" + publicKey + "</publickey>";
         
-        //create child element, add an attribute, and add to root
-        Element child = doc.createElement("digest");
-        child.setNodeValue(digest);
-        doc.appendChild(child);
-        
-        Element child2 = doc.createElement("publickey");
-        child2.setNodeValue(publicKey);
-        doc.appendChild(child2);*/
-        
-		return "Digest";//doc.toString();
+		return tmp;//doc.toString();
 	}
 	
 
@@ -476,35 +466,22 @@ public class SingleClientThread extends Thread {
 	private boolean AnalyzeDigest(Message m) {
 		// TODO Auto-generated method stub
 		String XMLdata = m.GetData();
-		try {
-			String d = ParseXML(XMLdata, "digest");
-			String p = ParseXML(XMLdata, "publickey");
-		} catch (ParserConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SAXException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		String d = ParseXML(XMLdata, "digest");
+		String p = ParseXML(XMLdata, "publickey");
 		
 		//TODO: digest check
 		return true;
 	}
 
-	private String ParseXML(String xMLdata, String string) throws ParserConfigurationException, SAXException, IOException {
-		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-		Document doc = dBuilder.parse(xMLdata);
-		NodeList nList = doc.getElementsByTagName(string);
+	private String ParseXML(String xMLdata, String string) {
+		String tmp = "";
+
+		tmp = xMLdata;
+	
+		int i = tmp.indexOf("<"+ string + ">");
+		int end = tmp.indexOf("</" + string + ">");
+		String t = tmp.substring(i+string.length()+2, end);
 		
-		Node nNode = nList.item(0);
-		Element eElement = (Element) nNode;
-		NodeList nlList = eElement.getElementsByTagName(string).item(0).getChildNodes();
-		 
-        Node nValue = (Node) nlList.item(0);
-		return nValue.getNodeValue();
+		return t;
 	}
 }

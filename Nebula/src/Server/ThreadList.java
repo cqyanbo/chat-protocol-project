@@ -63,5 +63,16 @@ public class ThreadList {
 		}
 		
 	}
+	
+	public static String ToString()
+	{
+		String tmp = "";
+		for(int i = 0; i < threadslist.size(); i++)
+		{
+			tmp += threadslist.get(i).getName() + "\n";
+		}
+		
+		return tmp;
+	}
 
 }
