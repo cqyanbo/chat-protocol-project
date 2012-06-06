@@ -10,12 +10,10 @@ import Basic.Message;
 public class BroadcastThread extends Thread {
 	
 	private static ArrayList<Message> broadlist = new ArrayList<Message>();	// this is the place for storing all the message that would be
-	private static ArrayList<User> userlist = new ArrayList<User>();	// store users
 	private Message m;
-	private ArrayList<Thread> clientsThreads = ThreadList.GetThreadsList();
 	private static Lock lock = new ReentrantLock();
 
-	BroadcastThread( Message _m)
+	BroadcastThread(Message _m)
 	{
 		System.out.println("inside the broadcast");
 		this.m = _m;
@@ -24,7 +22,7 @@ public class BroadcastThread extends Thread {
 	
 	BroadcastThread()
 	{
-		
+		broadlist.clear();
 	}
 	
 	public void AddMessage(Message o)
@@ -59,66 +57,6 @@ public class BroadcastThread extends Thread {
 		try
 		{
 			return broadlist;
-		}
-		finally
-		{
-			lock.unlock();
-		}
-	}
-	
-	public void AddUser(User user)
-	{
-		lock.lock();
-		try
-		{
-			userlist.add(user);
-		}
-		finally
-		{
-			lock.unlock();
-		}
-	}
-	
-	public boolean CheckUser(String username)
-	{
-		lock.lock();
-		try
-		{
-			for(User u : userlist)
-			{
-				if(u.GetUsername() == username.trim())
-				{
-					return true;
-				}
-				
-			}
-			
-			return false;
-		}
-		finally
-		{
-			lock.unlock();
-		}
-	}
-	
-	public void DeleteUser(User user)
-	{
-		lock.lock();
-		
-		int index = 0;
-		
-		try
-		{
-			for(User u : userlist)
-			{
-				if(u.GetUsername() == user.GetUsername())
-				{
-					userlist.remove(index);
-					break;
-				}
-				
-				index++;
-			}
 		}
 		finally
 		{
