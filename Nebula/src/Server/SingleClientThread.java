@@ -4,6 +4,16 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+import org.w3c.dom.*;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.*;
+
+import javax.xml.transform.*;
+import javax.xml.transform.dom.*;
+import javax.xml.transform.stream.*;
+
+
 import Server.DFAState.DFASTATE;
 
 import Basic.Message;
@@ -64,24 +74,35 @@ public class SingleClientThread extends Thread {
 				
 				if(!this.isAlive())
 				{
+					this.DeleteAndClose();
 					break;
 				}
 				
 				if(incoming.isClosed() || !incoming.isConnected())
 				{
+					this.DeleteAndClose();
 					break;
 				}
 				try {
 					int a = -1;
 					
-					//while(a < 0)
-					a = input.read(buffer);
-					
+					while(a < 0)
+						a = input.read(buffer);
 					
 				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
+					// if the server could not understand this message type and has exception, send E1: invalid message
+					try
+					{
+						Send(new Message(1, 0xE1, this.Userid, 0, null));
+					}
+					catch(Exception e)
+					{
+						// if could not send the error message correctly, just disconnect directly
+						this.DeleteAndClose();
+						break;
+					}
 				}
+				
 				Message message = GetNewMessage(buffer);
 	
 				if(message.GetMessageType() == 41)
@@ -97,13 +118,12 @@ public class SingleClientThread extends Thread {
 						m.SetMessageLength(0);
 						m.SetData(null);
 					}catch (Exception e) {
-						// TODO: handle exception
+						// if failed...disconnect directly
+						this.DeleteAndClose();
+						break;
 					}
 					
 					Send(m);
-					ThreadList.DeleteFromThreadList(this);
-					ThreadList.GetBroadThread().DeleteUser(user);
-					SocketList.DeleteSocket(incoming);
 					
 					// then broadcast message, without sending to the disconnecting client
 					m = new Message();
@@ -115,43 +135,51 @@ public class SingleClientThread extends Thread {
 						m.SetMessageLength(0);
 						m.SetData(null);
 					} catch (Exception e) {
-						// TODO: handle exception
+						// if failed...disconnect directly
+						this.DeleteAndClose();
+						break;
 					}
 					
 					// give this message to broadcast thread
 					BroadcastThread broadcast = new BroadcastThread(m);
 					broadcast.start();
-					try {
-						incoming.close();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					
-					
-					// delete this user from user table
-					UserTable.DeleteUserId(Userid);
-					
-					// delete this thread from thread list
-					ThreadList.DeleteFromThreadList(this);
-					
-					// delete this socket from socket list
-					SocketList.DeleteSocket(incoming);
-					
+					this.DeleteAndClose();
 					break;
 				}
 				else
 				{
 					try {
 						DFA(message);
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+					} catch (Exception e) {
+						// if the message type is not acceptable, send out E1
+						try {
+							Send(new Message(1, 0xE1, 0, 0, null));
+						} catch (Exception e1) {
+							break;
+						}
 					}
 				}
 			}
 		}
 
+	}
+
+	private void DeleteAndClose() {
+		// delete the socket from socket list
+		SocketList.DeleteSocket(incoming);
+		
+		// delete this thread from thread list
+		ThreadList.DeleteFromThreadList(this);
+		
+		// delete this user from user list
+		UserTable.DeleteUserId(Userid);
+		
+		try {
+			incoming.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	// send message to user
@@ -172,14 +200,26 @@ public class SingleClientThread extends Thread {
 		String tt = new String(buffer);
 		char[] test = (tt).toCharArray();
 		
-		m = Message.ByteArrayToMessage(test);
-		// read each part of packet from the buffer
+		try
+		{
+			m = Message.ByteArrayToMessage(test);
+			// read each part of packet from the buffer
+		}
+		catch(Exception e)
+		{
+			// if could not parse the message correctly, send E1 message with the exception message
+			try {
+				Send(new Message(1, 0xE1, this.Userid, e.getMessage().length(), e.getMessage()));
+			} catch (Exception e1) {
+				this.DeleteAndClose();
+			}
+		}
 		
 		return m;
 	}
 	
 	@SuppressWarnings("deprecation")
-	private void DFA(Message m) throws IOException
+	private void DFA(Message m) throws Exception
 	{
 		System.out.println("The state is: " + state.GetState());
 		//System.out.println("Inside the DFA loop");
@@ -203,14 +243,16 @@ public class SingleClientThread extends Thread {
 						Message close = new Message(1, 42, this.Userid, 0, null);
 						Send(close); // do not need to care if this message would be received by client, because the client would disconnect automatically when timeout
 						incoming.close();
-						this.destroy();
+						break;
 					}
 				}
 				else
 				{
+					// if the message type is not correct, send out E2
+					Send(new Message(1, 0xE2, 0, 0, null));
 					// disconnect
 					incoming.close();
-					this.equals(null); // stop this thread;
+					break;
 				}
 				break;
 			case HELLO_S_SENT:
@@ -221,7 +263,12 @@ public class SingleClientThread extends Thread {
 					// TODO: get digest and public key from security method
 					String Digest = "digest";
 					String PublicKey = "publick";
-					String DataField = XMLBuilder(Digest, PublicKey);
+					String DataField = null;
+					try {
+						DataField = XMLBuilder(Digest, PublicKey);
+					} catch (ParserConfigurationException e) {
+						e.printStackTrace();
+					}
 					Message digest = new Message(1, 53, this.Userid, DataField.length(), DataField);
 					boolean sent = Send(digest);
 					
@@ -234,12 +281,17 @@ public class SingleClientThread extends Thread {
 					{
 						// disconnect
 						incoming.close();
+						break;
 					}
 				}
 				else
 				{
+					// if the message type is not correct, send out E2
+					Send(new Message(1, 0xE2, 0, 0, null));
+					
 					// disconnect
 					incoming.close();
+					break;
 				}
 				break;
 			case WAIT_FOR_ACK:
@@ -254,19 +306,18 @@ public class SingleClientThread extends Thread {
 						state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
 						System.out.println("The state is: " + state.GetState());
 					}
-					else
-					{
-						// if did not send successfully, 
-					}
 				}
 				else
 				{
+					// if the message type is not correct, send out E2
+					Send(new Message(1, 0xE2, 0, 0, null));
 					// disconnect
 					incoming.close();
+					break;
 				}
 				break;
 			case WAIT_FOR_C_AUTH:
-				// the current state is WAIT_FOR_C_AUTH
+				// the current state is WAIT_FOR_C_AUTH, the server side is expecting to receive client's digest and public key
 				if(m.GetMessageType() == 52)
 				{
 					boolean passed = AnalyzeDigest(m);
@@ -285,21 +336,13 @@ public class SingleClientThread extends Thread {
 						
 						// disconnect
 						incoming.close();
+						break;
 					}
 				}
 				else
 				{
-					// if the message is not C_AUTH, resend server digest and public key
-					boolean sent = Send(new Message(1, 51, 0, 0, null));
-					tmp++;
-					
-					// if send more than 5 times
-					if(tmp >= 5)
-					{
-						// disconnect
-						incoming.close();
-						this.destroy();
-					}
+					// if the message is not C_AUTH, send out E2
+					Send(new Message(1, 0xE2, 0, 0, null));
 				}
 				break;
 			case WAIT_FOR_KEY:
@@ -332,35 +375,36 @@ public class SingleClientThread extends Thread {
 							{
 								// disconnect
 								incoming.close();
-								this.destroy();
+								break;
 							}
 						}
 					}
 				}
 				else
 				{
-					// if the message type is not valid, send the Key Request message indicating the desired message and go back the former state
-					boolean sent = Send(new Message(1, 51, 0, 0, null));
-					state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
-					System.out.println("The state is: " + state.GetState());
+					// if the message type is not correct, send out E2
+					Send(new Message(1, 0xE2, 0, 0, null));
 				}
 				break;
 			case SECURED:
 				// the current state is secured, which means the authentication stage has finished.
 				// Then ask the user to provide the username.
-				if(m.GetMessageType() == 57)
+				if(m.GetMessageType() == 11)
 				{
 					
 					if(UserTable.CheckUserName(m.GetData().toString()))
 					{
-						// if there is the same username, request a new username
-						boolean sent = Send(new Message(1, 57, 0, 0, null));
+						// if there is the same username, request a new username by sending Duplicate User message
+						boolean sent = Send(new Message(1, 13, 0, 0, null));
 						System.out.println("The state is: " + state.GetState());
 					}
 					else
 					{
 						// if this username is unique
 						UserTable.AddUserId(this.Userid, m.GetData().trim().replace("\r\n", "\n"));
+						
+						// add the Username connected message to broadcast thread, the broadcast thread will broadcast it to all other connecting clients
+						ThreadList.GetBroadThread().AddMessage(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
 						
 						// then the client and server connected
 						state.SetState(DFASTATE.CONNECTED);
@@ -374,23 +418,21 @@ public class SingleClientThread extends Thread {
 				else
 				{
 					// if the message is not username message
-					// ask for username again
-					// try five times, then disconnect
+					// if the message type is not correct, send out E2
+					Send(new Message(1, 0xE2, 0, 0, null));
 				}
 				break;
 			case CONNECTED:
 				// the current state is connected. The server is expecting the normal chat message
 				if(m.GetMessageType() == 21)
 				{
-					// if get the message, stop the timer
-					timer.cancel();
-					
 					// add the message into the broadcast array in the broadcast thread
 					ThreadList.GetBroadThread().AddMessage(new Message(1, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
 				}
 				else
 				{
-					// if the message is not the normal chat message, just ignore
+					// if the message type is not correct, send out E2
+					Send(new Message(1, 0xE2, 0, 0, null));
 				}
 				break;
 			default:
@@ -399,44 +441,70 @@ public class SingleClientThread extends Thread {
 				
 		}
 				
-		// at the very beginning, the state of DFA is disconnected
-		
-		// 1. has to be C_Hello message, if not C_Hello, close the connection
-		
-		// 2. build S_Hello, and send back to client side
-		
-		// 3. waiting for next message from client, if timeout, close the connection
-		//    if get the Auth_request message, send digest and own public key; if not the Auth_request, wait until the timeout, then close the connection
-		
-		// 4. server wait until get the Auth_passed message from client, sends back ACK message indicating requiring client's authentication information message
-		//    setting up a time for waiting, if timeout, close the connection
-		
-		// 5. if get client authentication message, analyze it and sends back auth_passed message, if information is correct, and indicating requiring a shared key.
-		//    if get other kinds of messages, keep sending ACK message with requiring client's authentication information message, until get the correct message, or attend to the limitation of attempt number.
-		
-		// 6. if get the shared key, store it and send back ACK with username_require information,
-		//   if not the shared key message, keep sending ACK with username_require information, or close connection when arrive the attempt number.
-		
-		// 7. after receiving username message from client, check if the username has been registered, if yes, send NAK with username_require information,
-		//   if no, send ACK with normal message requiring.
-		
-		// 8. put a message with new user indication into the first place of waiting list, and add new user information into user list for current group
-		
-		// 9. waiting for normal message from client, if get correct one, send into waiting list, if not correct, send NAK message indicating a new message require
-		//    if client did not send any messages in amount of time, close the connection, and put a user leaving message into the first place of waiting list.
-		//    Then, delete the user information from user list of current group
-		
-		// 10. when get a disconnect message, 
 	}
 
-	private String XMLBuilder(String digest, String publicKey) {
+	private String XMLBuilder(String digest, String publicKey) throws ParserConfigurationException {
+		/*digest = GetDigest();
+		publicKey = GetPublicKey();
+		DocumentBuilderFactory dbfac = DocumentBuilderFactory.newInstance();
+        DocumentBuilder docBuilder = dbfac.newDocumentBuilder();
+        Document doc = docBuilder.newDocument();
+        
+        //create child element, add an attribute, and add to root
+        Element child = doc.createElement("digest");
+        child.setNodeValue(digest);
+        doc.appendChild(child);
+        
+        Element child2 = doc.createElement("publickey");
+        child2.setNodeValue(publicKey);
+        doc.appendChild(child2);*/
+        
+		return "Digest";//doc.toString();
+	}
+	
+
+	private String GetPublicKey() {
 		// TODO Auto-generated method stub
-		return null;
+		return "publickKey";
+	}
+
+	private String GetDigest() {
+		// TODO Auto-generated method stub
+		return "Digest";
 	}
 
 	private boolean AnalyzeDigest(Message m) {
 		// TODO Auto-generated method stub
+		String XMLdata = m.GetData();
+		try {
+			String d = ParseXML(XMLdata, "digest");
+			String p = ParseXML(XMLdata, "publickey");
+		} catch (ParserConfigurationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SAXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//TODO: digest check
 		return true;
 	}
 
+	private String ParseXML(String xMLdata, String string) throws ParserConfigurationException, SAXException, IOException {
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(xMLdata);
+		NodeList nList = doc.getElementsByTagName(string);
+		
+		Node nNode = nList.item(0);
+		Element eElement = (Element) nNode;
+		NodeList nlList = eElement.getElementsByTagName(string).item(0).getChildNodes();
+		 
+        Node nValue = (Node) nlList.item(0);
+		return nValue.getNodeValue();
+	}
 }
