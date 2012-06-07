@@ -1,28 +1,8 @@
 package Basic;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.net.URL;
+
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
-
-import Server.DFAState;
 import Server.DFAState.DFASTATE;
-
-import org.json.simple.*;
-import org.json.simple.parser.ContainerFactory;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 public class Message {
 	
