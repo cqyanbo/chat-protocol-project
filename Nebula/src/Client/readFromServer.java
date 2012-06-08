@@ -46,7 +46,7 @@ public class readFromServer extends Thread
 				}
 				else
 				{
-					client.mainText.setText(client.mainText.getText() + "\n" + " " + client.message.GetUserid() + " " + client.message.GetData().replace("\r\n", "\n"));
+					client.mainText.setText(client.mainText.getText() + "\n" + ": " + client.message.GetUserid() + " " + client.message.GetData().replace("\r\n", "\n"));
 				}
 			}
 			System.out.println("Received: " + client.message.toString());

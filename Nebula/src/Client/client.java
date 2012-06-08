@@ -587,7 +587,7 @@ class client extends JFrame
   		  	String sendText = replace(inputText.getText(),"\n","\r\n");
   		  	Send(new Message(1, 21, this.userid, sendText.length(), sendText));
     	    inputText.setText("");
-    	    this.mainText.setText(mainText.getText() + "\n" + "me: " + sendText);
+    	    //this.mainText.setText(mainText.getText() + "\n" + "me: " + sendText);
     	}
     }
     
