@@ -21,10 +21,6 @@ public class ChatServer{
 		// start a serversocket for listening client's connection requests
 		ServerSocket serverSocket = null;
 		
-		BroadcastThread broadcast = new BroadcastThread();
-		broadcast.start();
-		System.out.println("broadcast thread has begun");
-		ThreadList.AddBroadThread(broadcast);
 		// initialize the network connection
 		try
 		{

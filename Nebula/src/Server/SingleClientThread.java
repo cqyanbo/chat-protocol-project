@@ -104,6 +104,7 @@ public class SingleClientThread extends Thread {
 					
 					try {
 						Send(new Message(1, 42, this.Userid, 0, null));
+						//incoming.close();
 					} catch (Exception e1) {
 						// TODO Auto-generated catch block
 						this.interrupt();
@@ -127,14 +128,13 @@ public class SingleClientThread extends Thread {
 						}
 						
 						// give this message to broadcast thread
-						BroadcastThread broadcast = new BroadcastThread(m);
-						broadcast.start();
+						BroadCastMessage(m);
 						this.DeleteAndClose();
 						System.out.println("Threads in the list: \n" + ThreadList.ToString());
 					}
 					
 					
-					System.out.println(this.getName() + " has been " + incoming.isClosed());
+					System.out.println(this.getName() + " has been " + this.isInterrupted());
 					
 					break;
 				}
@@ -380,9 +380,8 @@ public class SingleClientThread extends Thread {
 						
 						Send(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
 						
-						// add the Username connected message to broadcast thread, the broadcast thread will broadcast it to all other connecting clients
-						ThreadList.GetBroadThread().AddMessage(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
-						
+						// give this message to broadcast thread
+						BroadCastMessage(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
 						// then the client and server connected
 						state.SetState(DFASTATE.CONNECTED);
 						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
@@ -405,7 +404,7 @@ public class SingleClientThread extends Thread {
 				if(m.GetMessageType() == 21)
 				{
 					// add the message into the broadcast array in the broadcast thread
-					ThreadList.GetBroadThread().AddMessage(new Message(1, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
+					BroadCastMessage(new Message(1, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
 				}
 				else
 				{
@@ -449,6 +448,25 @@ public class SingleClientThread extends Thread {
 		
 		//TODO: digest check
 		return true;
+	}
+	
+	private void BroadCastMessage(Message message)
+	{
+		ArrayList<SingleClientThread> threads = (ArrayList<SingleClientThread>) ThreadList.GetThreadsList().clone();
+		
+		if(threads.size() > 0)
+		{
+			for(int i = 0; i< threads.size(); i++)
+			{
+				// if the thread is alive and is not the message sender
+				System.out.println("Broad message to: " + threads.get(i).getName());
+				threads.get(i).Send(message);
+				System.out.println("Broadcasted");
+				
+			}
+		}
+		
+		System.out.println("Has published all messages in the broadcast list");
 	}
 
 	private String ParseXML(String xMLdata, String string) {

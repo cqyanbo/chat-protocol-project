@@ -53,45 +53,15 @@ public class BroadcastThread extends Thread {
 	
 	// run method
 	public void run()
-	{
-		// check if the waiting list is empty.
-		while(true)
-		{
-			//System.out.println("waiting for broadcasting");
-			if(broadlist.size() > 0)
-			{
-				System.out.println("There are " + broadlist.size() + " messages needed to be broadcasted.");
-				System.out.println("inside the broadcast");
-				// if it is not empty, start to broadcast message one by one
-				ArrayList<Message> broad = new ArrayList<Message>();
-				broad = (ArrayList<Message>)broadlist.clone(); // deep copy to local arraylist
-				
-				// delete messages in the broadlist
-				broadlist.clear();
-				System.out.println("There are " + broad.size() + " messages in broad");
-				System.out.println("There are " + broadlist.size() + " messages in broadlist");
-
-				for(int i = 0; i<broad.size(); i++)
-				{
-					//broadcast each message in this arraylist
-					System.out.println("broadcasting message: \n" + broad.get(i).toString());
-					BroadCastMessage((Message)broad.get(i));
-					
-				}
-			}
-		}
+	{	
+		System.out.println("Broadcasting: " + m.toString());
+		BroadCastMessage(m);
 	}
 	
 	private void BroadCastMessage(Message message)
 	{
 		ArrayList<SingleClientThread> threads = (ArrayList<SingleClientThread>) ThreadList.GetThreadsList().clone();
 		
-		System.out.print("There are: ");
-		
-		for(int i = 0; i < broadlist.size(); i++)
-		{
-			System.out.println(broadlist.get(i).GetData());
-		}
 		while(threads.size() > 0)
 		{
 			for(int i = 1; i< threads.size(); i++)

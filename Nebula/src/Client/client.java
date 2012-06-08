@@ -39,31 +39,23 @@ class client extends JFrame
 	{
 		
 		setTitle("Simple Java Chat - Disconnected");
-		enter = false; //asimanti metavliti gia tin voithia leitourgias tou gui
-		connected = false; //molis ani3i to client DEn imaste sindedemenoi
+		connected = false; 
 		
 		//Gui Stuff
-		//Ta pio polla dimiourgithikan aftomata apo 
-		//to NetBEANS. opou alla3e kati iparxoun sxolia
+
 		jScrollPane1 = new javax.swing.JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         inputText = new javax.swing.JTextArea();
         sendButton = new javax.swing.JButton();
         jScrollPane2 = new javax.swing.JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         mainText = new javax.swing.JTextArea();
         jScrollPane3 = new javax.swing.JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		
-		//to list ine antikeimeno DefaultListModel
-		//gia ti leitourgia tou list me ta nicknames sto gui
-		//stin arxi arxikopoiite na periexi ena stoixeio "NotConnected"
+        
 		list = new DefaultListModel();
 		list.addElement("Not Connected");
 		
-		//arxeikopoiisi tou JList antikeimeno me to DefaultListModel
-		//oti allages ginonte sto DefaultListModel antikeimeno ginonte orates sto JList
 		nickList = new JList(list);
         jMenuBar1 = new javax.swing.JMenuBar();
     
-    	//more netbeans stuff
         jMenu1 = new javax.swing.JMenu();
         jMenu2 = new javax.swing.JMenu();
         jMenuItem1 = new javax.swing.JMenuItem();
@@ -76,13 +68,7 @@ class client extends JFrame
         inputText.setRows(5);
         jScrollPane1.setViewportView(inputText);
 		
-		//oti leei ..
         sendButton.setText("Send");
-        
-        //merika apo to netbeans kai sto idio motivo ektisa ta ipolipa manual
-        //me liga logia otan ginei click sto sendButton ekteleite i sinartisi 
-        //sendButtonActionPerformed se afto to antikeimeno
-        //Akolouthoun diafore listener me diafora events
         
         sendButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -90,7 +76,6 @@ class client extends JFrame
             }
         });
         
-        //otan patithi kapio pliktro
         inputText.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 inputTextKeyReleased(evt);
@@ -116,7 +101,6 @@ class client extends JFrame
         mainText.setLineWrap(true);
         inputText.setLineWrap(true);
         jScrollPane2.setViewportView(mainText);
-
 
 		jScrollPane3.setViewportView(nickList);
 		//Ta menus
@@ -201,10 +185,6 @@ class client extends JFrame
         
         setVisible(true);
 	}
-	
-	//Sinartisi pou analamvani to prosopiko minima
-	//Anigi ena inputbox kai zita to minima kai to prootha sto server me to analogo prothema
-	//simfona me to protokolo
 
 	private void nickListMouseClicked(java.awt.event.MouseEvent evt)
 	{
@@ -219,26 +199,26 @@ class client extends JFrame
 				//Simfona me to protokolo ProvatePost msg, nick
 				//send("PrivatePost " + msg + ", "+nickList.getSelectedValue());
 			}
-			//ektiposi sti konsola gia skopous debugging
+
 		 	System.out.println(nickList.getSelectedValue());
 		}
 	}
 	
-	static boolean enter; //metavliti voithitiki gia ti leitourgia tou enter
-						  //gia na lisi ena provlima tou na katharizi to input kai na min 
-						  //stelni tipote apo to inputText otan patithi enter kai den exei keimeno mesa
-						  //gia tin idio logo kaleite me dio listener giati itan o monos tropos pou doulepse sosta
+	static boolean enter;
+	
     private void inputTextKeyReleased(java.awt.event.KeyEvent evt) 
     {
-    	//O protos tropos pou vrika na ele3o an patithike to enter
-    	//evala na tiponi to getKeyCode, patisa enter kai tipone 10
-    	//idea den exo ti simeni isos ASCII 
+
         if(evt.getKeyCode() == 10)
         {
            	if (enter)
     		{
-    			//apostoli minimatos
-    			sendInput();
+    			try {
+					sendInput();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
     			enter = false;
     		}
     		else
@@ -252,6 +232,7 @@ class client extends JFrame
     {
     	// send out message type 41 for requiring disconnect
     	Send(new Message(1, 41, 0, 0, null));
+    	this.connected = false;
 		while(true)
 		{
 			if(message.GetMessageType() == 42)
@@ -548,22 +529,22 @@ class client extends JFrame
 		}
 	}
 	
-	//kaleite otan ginei click sto koumpi Send
     private void sendButtonActionPerformed(java.awt.event.ActionEvent evt) 
     {
-		sendInput();	    
+		try {
+			sendInput();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	    
     }
-	//methodos gia anagnosi apo to server
-	//kaleite apo to readFromServer antikeimeno
-	//isos kapos anorthodo3a
+
 	static String read()
 	{
 		
 		String s = null;
 		try 
 		{
-			//Perimenei na stilei kati o server
-			//kai to anatheti stin s
 			s = in.readLine();
 		}
 		catch (Exception e)
@@ -575,9 +556,6 @@ class client extends JFrame
 	}
 	
 	
-	//Methodos copy paste apo to google
-	//Kanei replace ena string me ena allo
-	//Tipote idietero apla to vrika etoimo kai to ensomatosa
 	static String replace(String str, String pattern, String replace) 
 	{
   	  	int s = 0;
@@ -592,33 +570,29 @@ class client extends JFrame
     	result.append(str.substring(s));
     	return result.toString();
     }
-    //Sinartisi pou kaleite na stilei to periexomenou tou input JTextArea sto server
-    //kaleite otan iparxei kati sto input (den ine keno)
   
-    void sendInput()
+    void sendInput() throws Exception
     {
-    	//an den imaste sindedemenoi error kai katharizoume to input
     	if (!connected)
     	{
     		JOptionPane.showMessageDialog( this, "Not connected! Actions - Connect","Error", JOptionPane.ERROR_MESSAGE );
     		inputText.setText("");
     	}
-    	//an den iparxi tipote grammeno sto input den kanoume tipote
     	else if(inputText.getText().equals("") || inputText.getText().equals("\n") ||  inputText.getText()== null  )
     	{
     		inputText.setText("");
     	}
     	else
     	{
-    		  //fevgo ta new line (\n) apo to input giati dimiourgoun provlima kai varieme na alla3o to server :)
-    		  //kai stelno to minima
-    		  //send("Post " + replace(inputText.getText(),"\n"," "));
-    	      inputText.setText("");
+  		  	String sendText = replace(inputText.getText(),"\n","\r\n");
+  		  	Send(new Message(1, 21, this.userid, sendText.length(), sendText));
+    	    inputText.setText("");
+    	    this.mainText.setText(mainText.getText() + "\n" + "me: " + sendText);
     	}
     }
-    //netbeans dilosis metavlitwn
+    
     public static String nick;
-	    private javax.swing.JTextArea inputText;
+	private javax.swing.JTextArea inputText;
     private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenuBar jMenuBar1;
