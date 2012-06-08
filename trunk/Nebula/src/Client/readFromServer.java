@@ -32,6 +32,23 @@ public class readFromServer extends Thread
 			}
 			
 			client.message = GetNewMessage(buffer);
+			
+			if(client.connected && (client.message.GetMessageType()==12|client.message.GetMessageType()==15|client.message.GetMessageType()==22))
+			{
+				if(client.message.GetMessageType()==12)
+				{
+					client.mainText.setText(client.mainText.getText() + "\n" + " new connection: " + client.message.GetUserid());
+				}
+				else if(client.message.GetMessageType()==15)
+				{
+					client.mainText.setText(client.mainText.getText() + "\n" + " user: " + client.message.GetUserid() + " has left");
+
+				}
+				else
+				{
+					client.mainText.setText(client.mainText.getText() + "\n" + " " + client.message.GetUserid() + " " + client.message.GetData().replace("\r\n", "\n"));
+				}
+			}
 			System.out.println("Received: " + client.message.toString());
 		}
 	}
