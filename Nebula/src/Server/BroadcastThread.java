@@ -9,9 +9,8 @@ import Basic.Message;
 
 public class BroadcastThread extends Thread {
 	
-	private static ArrayList<Message> broadlist = new ArrayList<Message>();	// this is the place for storing all the message that would be
+	private ArrayList<Message> broadlist = new ArrayList<Message>();	// this is the place for storing all the message that would be
 	private Message m;
-	private static Lock lock = new ReentrantLock();
 
 	BroadcastThread(Message _m)
 	{
@@ -25,55 +24,43 @@ public class BroadcastThread extends Thread {
 		broadlist.clear();
 	}
 	
-	public void AddMessage(Message o)
+	public synchronized void AddMessage(Message o)
 	{
-		lock.lock();
-		try
+		System.out.println(this.getName() + " is adding broadcast message");
+
+		broadlist.add(o);
+
+		
+		System.out.print("There are: ");
+		
+		for(int i = 0; i < broadlist.size(); i++)
 		{
-			broadlist.add(o);
-		}
-		finally
-		{
-			lock.unlock();
+			System.out.println(broadlist.get(i).GetData());
 		}
 	}
 	
-	public void AddMessageList(ArrayList<Message> o)
+	public synchronized void AddMessageList(ArrayList<Message> o)
 	{
-		lock.lock();
-		try
-		{
-			broadlist.addAll(o);
-		}
-		finally
-		{
-			lock.unlock();
-		}
+
+		broadlist.addAll(o);
+
 	}
 	
-	public ArrayList<Message> GetMessageList()
+	public synchronized ArrayList<Message> GetMessageList()
 	{
-		lock.lock();
-		try
-		{
-			return broadlist;
-		}
-		finally
-		{
-			lock.unlock();
-		}
+		return broadlist;
 	}
 	
 	// run method
 	public void run()
 	{
-		System.out.println("inside the ttbroadcast");
 		// check if the waiting list is empty.
 		while(true)
 		{
 			//System.out.println("waiting for broadcasting");
-			while(broadlist.size() > 0)
+			if(broadlist.size() > 0)
 			{
+				System.out.println("There are " + broadlist.size() + " messages needed to be broadcasted.");
 				System.out.println("inside the broadcast");
 				// if it is not empty, start to broadcast message one by one
 				ArrayList<Message> broad = new ArrayList<Message>();
@@ -81,10 +68,13 @@ public class BroadcastThread extends Thread {
 				
 				// delete messages in the broadlist
 				broadlist.clear();
-				
+				System.out.println("There are " + broad.size() + " messages in broad");
+				System.out.println("There are " + broadlist.size() + " messages in broadlist");
+
 				for(int i = 0; i<broad.size(); i++)
 				{
 					//broadcast each message in this arraylist
+					System.out.println("broadcasting message: \n" + broad.get(i).toString());
 					BroadCastMessage((Message)broad.get(i));
 					
 				}
@@ -98,19 +88,19 @@ public class BroadcastThread extends Thread {
 		
 		System.out.print("There are: ");
 		
-		for(int i = 0; i < threads.size(); i++)
+		for(int i = 0; i < broadlist.size(); i++)
 		{
-			System.out.println(message.GetData());
+			System.out.println(broadlist.get(i).GetData());
 		}
 		while(threads.size() > 0)
 		{
 			for(int i = 1; i< threads.size(); i++)
 			{
 				// if the thread is alive and is not the message sender
-				if(threads.get(i).isAlive() && threads.get(i).GetUserid() == message.GetUserid())
-				{
-					threads.get(i).Send(message);
-				}
+				System.out.println("Broad message to: " + threads.get(i).getName());
+				threads.get(i).Send(message);
+				System.out.println("Broadcasted");
+				
 			}
 		}
 		
