@@ -41,6 +41,18 @@ public class Message {
 			this.SetUserid(_userid);
 	}
 	
+	public Message(int _version, String _messagetype, int _userid, int _messagelength, String _data) throws Exception
+	{
+			this.SetVersion(_version);
+			this.SetData(_data);
+			if(_data != null)
+				SetMessageLength(_data.length());
+			else
+				SetMessageLength(0);
+			this.SetMessageType(Integer.parseInt(_messagetype, 16));
+			this.SetUserid(_userid);
+	}
+	
 	/*
 	 * SET
 	 */
@@ -451,6 +463,8 @@ public class Message {
 			tmp[i-from] = array[i];
 		}
 		
+		//System.out.println("Trying to convert: " + new String(tmp));
+		
 		return Integer.parseInt(new String(tmp), 2);
 	}
 	
@@ -472,16 +486,33 @@ public class Message {
 		Message m = new Message();
 		try {
 			m.SetVersion(CharArrayToInt(tmp, 0, 3));
+			//System.out.println("version: " + m.GetVersion());
 			m.SetMessageType(CharArrayToInt(tmp, 4, 11));
+			//System.out.println("Message Type: " + m.GetMessageType());
 			m.SetUserid(CharArrayToInt(tmp, 12, 27));
+			//System.out.println("User id: " + m.GetUserid());
 			m.SetMessageLength(CharArrayToInt(tmp, 32, 39));
+			//System.out.println("Message Length: " + m.GetMessageLength());
 			m.SetData(CharArrayToString(tmp, 40, packet.length-1).replace("\r\n", "\n"));
+			//System.out.println("Data: " + m.GetData());
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.exit(0);
 		}
 		
 		return m;
+	}
+	
+	public String toString()
+	{
+		String tmp = "Version=" + this.version + 
+		" Message Type = " + this.MessageType + 
+		" Userid = " + this.UserID + 
+		" Message Length = " + this.length + 
+		" Data: " + this.Data;
+		
+		return tmp;
 	}
 	
 	public static char[] toCharArray(BitSet bs)

@@ -4,9 +4,6 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-import org.w3c.dom.*;
-import org.xml.sax.SAXException;
-
 import javax.xml.parsers.*;
 
 import javax.xml.transform.*;
@@ -34,7 +31,6 @@ public class SingleClientThread extends Thread {
 		this.incoming = _incoming;
 		try {
 			input = new DataInputStream(incoming.getInputStream());
-			in = new BufferedReader(new InputStreamReader(input));
 			output = new DataOutputStream(incoming.getOutputStream());
 			System.out.println("Get I/O Stream Correctly");
 			System.out.println("Threads in the list: \n" + ThreadList.ToString());
@@ -106,20 +102,12 @@ public class SingleClientThread extends Thread {
 					// send ACK message 42, and broadcast client closed message 15
 					Message m = new Message();
 					
-					try
-					{
-						m.SetVersion(1);
-						m.SetMessageType(42);
-						m.SetUserid(this.user.GetUserid());
-						m.SetMessageLength(0);
-						m.SetData(null);
-					}catch (Exception e) {
-						// if failed...disconnect directly
-						this.DeleteAndClose();
-						break;
+					try {
+						Send(new Message(1, 42, this.Userid, 0, null));
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						this.interrupt();
 					}
-					
-					Send(m);
 					
 					if(state.GetState() == DFASTATE.CONNECTED)
 					{
@@ -129,7 +117,7 @@ public class SingleClientThread extends Thread {
 						try {
 							m.SetVersion(1);
 							m.SetMessageType(15);
-							m.SetUserid(this.user.GetUserid());
+							m.SetUserid(this.Userid);
 							m.SetMessageLength(0);
 							m.SetData(null);
 						} catch (Exception e) {
@@ -153,7 +141,10 @@ public class SingleClientThread extends Thread {
 				else
 				{
 					try {
+						System.out.println("Enter Message: " + message.toString());
 						DFA(message);
+						System.out.println("Out Message: " + message.toString());
+						message = null;
 					} catch (Exception e) {
 						// if the message type is not acceptable, send out E1
 						try {
@@ -190,6 +181,7 @@ public class SingleClientThread extends Thread {
 	public boolean Send(Message m){
 		
 		try {
+			System.out.println("Send: " + m.GetMessageType() + " Data: " + m.GetData());
 			this.output.write(m.Packet2ByteArray());
 			output.flush();
 			return true;
@@ -302,13 +294,10 @@ public class SingleClientThread extends Thread {
 				if(m.GetMessageType() == 55)
 				{	
 					// send the digest request message to client
-					boolean sent = Send(new Message(1, 51, 0, 0, null));
+					Send(new Message(1, 51, 0, 0, null));
 					
-					if(sent)
-					{
-						state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
-						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
-					}
+					state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
+					System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 				}
 				else
 				{
@@ -320,6 +309,8 @@ public class SingleClientThread extends Thread {
 				}
 				break;
 			case WAIT_FOR_C_AUTH:
+				System.out.println("===========In the state: " + state.GetState());
+				System.out.println(m.toString());
 				// the current state is WAIT_FOR_C_AUTH, the server side is expecting to receive client's digest and public key
 				if(m.GetMessageType() == 52)
 				{
@@ -349,39 +340,18 @@ public class SingleClientThread extends Thread {
 				}
 				break;
 			case WAIT_FOR_KEY:
+				System.out.println("===========In the state: " + state.GetState());
 				// the current is WAIT_FOR_KEY, if the message received is the key message from client, go to next state, or send NAK message, and indicate the message desired
 				if(m.GetMessageType() == 54)
 				{	
+					System.out.println(m.toString());
 					this.sharedKey = m.GetData().toString().trim().replace("\r\n", "\n");
 					boolean sent = Send(new Message(1, 57, 0, 0, null));
 					
-					if(sent)
-					{
-						// go to next state
-						state.SetState(DFASTATE.SECURED);
-						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
-					}
-					else
-					{
-						// try five times, then disconnect
-						boolean b = false;
-						int index = 0;
-						if(!b)
-						{
-							// send KEY_ACK message, and indicate the server wants the username
-							b = Send(new Message(1, 57, 0, 0, null));
-							// go to next state
-							state.SetState(DFASTATE.SECURED);
-							System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
-							index++;
-							if(index > 5)
-							{
-								// disconnect
-								incoming.close();
-								break;
-							}
-						}
-					}
+
+					state.SetState(DFASTATE.SECURED);
+					System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
+
 				}
 				else
 				{
@@ -390,6 +360,8 @@ public class SingleClientThread extends Thread {
 				}
 				break;
 			case SECURED:
+				System.out.println("===========In the state: " + state.GetState());
+				System.out.println(m.toString());
 				// the current state is secured, which means the authentication stage has finished.
 				// Then ask the user to provide the username.
 				if(m.GetMessageType() == 11)
@@ -405,6 +377,8 @@ public class SingleClientThread extends Thread {
 					{
 						// if this username is unique
 						UserTable.AddUserId(this.Userid, m.GetData().trim().replace("\r\n", "\n"));
+						
+						Send(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
 						
 						// add the Username connected message to broadcast thread, the broadcast thread will broadcast it to all other connecting clients
 						ThreadList.GetBroadThread().AddMessage(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
@@ -423,7 +397,7 @@ public class SingleClientThread extends Thread {
 				{
 					// if the message is not username message
 					// if the message type is not correct, send out E2
-					Send(new Message(1, 0xE2, 0, 0, null));
+					Send(new Message(1, Integer.toString(0xE2, 16), 0, 0, null));
 				}
 				break;
 			case CONNECTED:
@@ -459,7 +433,7 @@ public class SingleClientThread extends Thread {
 
 	private String GetPublicKey() {
 		// TODO Auto-generated method stub
-		return "publickKey";
+		return "Server_publickKey";
 	}
 
 	private String GetDigest() {
