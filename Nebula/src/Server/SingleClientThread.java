@@ -19,6 +19,7 @@ public class SingleClientThread extends Thread {
 	
 	private Socket incoming;
 	private int Userid;
+	private String username = "";
 	private DataInputStream input = null;
 	private DataOutputStream output = null;
 	private BufferedReader in = null;
@@ -119,8 +120,8 @@ public class SingleClientThread extends Thread {
 							m.SetVersion(1);
 							m.SetMessageType(15);
 							m.SetUserid(this.Userid);
-							m.SetMessageLength(0);
-							m.SetData(null);
+							m.SetMessageLength(username.length());
+							m.SetData(username);
 						} catch (Exception e) {
 							// if failed...disconnect directly
 							this.DeleteAndClose();
@@ -367,7 +368,7 @@ public class SingleClientThread extends Thread {
 				if(m.GetMessageType() == 11)
 				{
 					
-					if(UserTable.CheckUserName(m.GetData().toString()))
+					if(UserTable.CheckUserName(m.GetData()))
 					{
 						// if there is the same username, request a new username by sending Duplicate User message
 						Send(new Message(1, 13, 0, 0, null));
@@ -379,7 +380,7 @@ public class SingleClientThread extends Thread {
 						UserTable.AddUserId(this.Userid, m.GetData().trim().replace("\r\n", "\n"));
 						
 						Send(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
-						
+						this.username = m.GetData().trim();
 						// give this message to broadcast thread
 						BroadCastMessage(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
 						// then the client and server connected
@@ -458,10 +459,13 @@ public class SingleClientThread extends Thread {
 		{
 			for(int i = 0; i< threads.size(); i++)
 			{
-				// if the thread is alive and is not the message sender
-				System.out.println("Broad message to: " + threads.get(i).getName());
-				threads.get(i).Send(message);
-				System.out.println("Broadcasted");
+				if(threads.get(i).isAlive() && threads.get(i).incoming.isConnected())
+				{
+					// if the thread is alive and is not the message sender
+					System.out.println("Broad message to: " + threads.get(i).getName());
+					threads.get(i).Send(message);
+					System.out.println("Broadcasted");
+				}
 				
 			}
 		}

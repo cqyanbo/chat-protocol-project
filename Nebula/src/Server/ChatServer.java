@@ -20,7 +20,7 @@ public class ChatServer{
 		
 		// start a serversocket for listening client's connection requests
 		ServerSocket serverSocket = null;
-		
+		UserTable.clean();
 		// initialize the network connection
 		try
 		{

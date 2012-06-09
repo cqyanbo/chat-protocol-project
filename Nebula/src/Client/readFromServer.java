@@ -31,28 +31,55 @@ public class readFromServer extends Thread
 				// if read the wrong message, do not do anything
 			}
 			
-			client.message = GetNewMessage(buffer);
+			c.AddMessage(GetNewMessage(buffer));
 			
-			if(client.connected && (client.message.GetMessageType()==12|client.message.GetMessageType()==15|client.message.GetMessageType()==22))
+			if(c.connected && (c.message.GetMessageType()==12|c.message.GetMessageType()==15|c.message.GetMessageType()==22))
 			{
-				if(client.message.GetMessageType()==12)
+				if(c.message.GetMessageType()==12)
 				{
-					client.mainText.setText(client.mainText.getText() + "\n" + " new connection: " + client.message.GetUserid());
+					c.mainText.setText(c.mainText.getText() + "\n" + c.message.GetData() + " joined");
 				}
-				else if(client.message.GetMessageType()==15)
+				else if(c.message.GetMessageType()==15)
 				{
-					client.mainText.setText(client.mainText.getText() + "\n" + " user: " + client.message.GetUserid() + " has left");
+					c.mainText.setText(c.mainText.getText() + "\n" + c.message.GetData() + " has left");
 
 				}
 				else
 				{
-					client.mainText.setText(client.mainText.getText() + "\n" + ": " + client.message.GetUserid() + " " + client.message.GetData().replace("\r\n", "\n"));
+					if(c.message.GetUserid() == c.GetUserId())
+					{
+						c.mainText.setText(c.mainText.getText() + "\n" + " " + "me: " + parseMessage(c.message.GetData().replace("\r\n", "\n")));
+
+					}
+					else
+					{
+						c.mainText.setText(c.mainText.getText() + "\n" + " " + paserUsername(c.message.GetData()) + ": " + parseMessage(c.message.GetData().replace("\r\n", "\n")));
+					}
 				}
 			}
-			System.out.println("Received: " + client.message.toString());
+			System.out.println("Received: " + c.message.toString());
 		}
 	}
 	
+	private String parseMessage(String replace) {
+		
+		String name = replace;
+		int end = replace.indexOf(">");
+		
+		name = name.substring(end+1, replace.length());
+		return name;
+	}
+
+	private String paserUsername(String getData) {
+		String name = getData;
+		int from = getData.indexOf("<");
+		int end = getData.indexOf(">");
+		
+		name = name.substring(from+1, end);
+		
+		return name;
+	}
+
 	private Message GetNewMessage(byte[] buffer)
 	{
 		Message m = new Message();
