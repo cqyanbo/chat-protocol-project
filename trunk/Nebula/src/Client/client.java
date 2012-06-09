@@ -20,6 +20,8 @@ import java.awt.*;
 
 class client extends JFrame
 {
+	static String os = "";	// store the name of operating system that is running the server
+
 	static boolean connected; 
 	static boolean logout; 
 	static Socket cSocket; 
@@ -47,19 +49,25 @@ class client extends JFrame
  	
 	void run()
 	{
+		String osName = System.getProperty("os.name");
+
+		if(osName.indexOf("Windows") >= 0)
+			os = "Windows";
+		else if(osName.indexOf("Linux") >= 0)
+			os = "Linux";
+		else
+			os = "Mac";
 		
 		setTitle("Simple Java Chat - Disconnected");
 		connected = false; 
 		
 		//Gui Stuff
-
 		jScrollPane1 = new javax.swing.JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        inputText = new javax.swing.JTextArea();
-        sendButton = new javax.swing.JButton();
-        jScrollPane2 = new javax.swing.JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        mainText = new javax.swing.JTextArea();
-        jScrollPane3 = new javax.swing.JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        
+        inputText = new JTextArea();
+        sendButton = new JButton();
+        jScrollPane2 = new JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        mainText = new JTextArea();        
+
         jMenuBar1 = new javax.swing.JMenuBar();
     
         jMenu1 = new javax.swing.JMenu();
@@ -74,8 +82,7 @@ class client extends JFrame
 				try {
 					Send(new Message(Version, 41, userid, 0, null));
 				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
+					System.exit(0);
 				}
 				System.exit(0);
 			}
@@ -113,8 +120,6 @@ class client extends JFrame
         inputText.setLineWrap(true);
         jScrollPane2.setViewportView(mainText);
 
-		jScrollPane3.setViewportView(nickList);
-		//Ta menus
         jMenu1.setText("Commands");
 		jMenu2.setText("Help");
         jMenuItem1.setText("Connect");
@@ -174,7 +179,6 @@ class client extends JFrame
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 314, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jScrollPane3)
                     .addComponent(sendButton, javax.swing.GroupLayout.DEFAULT_SIZE, 141, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -182,7 +186,6 @@ class client extends JFrame
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 565, Short.MAX_VALUE)
                     .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 565, Short.MAX_VALUE))
                 .addGap(9, 9, 9)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
@@ -513,7 +516,6 @@ class client extends JFrame
 	// send message to user
 	public static boolean Send(Message m){
 		try {
-			System.out.println("Send: " + m.GetMessageType() + " Data: " + m.GetData());
 			out.write(m.Packet2ByteArray());
 			out.flush();
 			return true;
@@ -548,22 +550,7 @@ class client extends JFrame
 		return s;
 	}
 	
-	
-	static String replace(String str, String pattern, String replace) 
-	{
-  	  	int s = 0;
-  	  	int e = 0;
-  	  	StringBuffer result = new StringBuffer();
-    	while ((e = str.indexOf(pattern, s)) >= 0) 
-    	{
-    		result.append(str.substring(s, e));
-       	    result.append(replace);
-       	    s = e+pattern.length();
-    	}
-    	result.append(str.substring(s));
-    	return result.toString();
-    }
-  
+
     void sendInput(String userInput) throws Exception
     {
     	if (!connected)
@@ -578,10 +565,17 @@ class client extends JFrame
     	else
     	{
     		// message delineate
-  		  	String sendText = "<"+this.username+">"+replace(userInput,"\n","\r\n");
+  		  	String sendText = "<"+this.username+">"+userInput;
+  		  	
+  		  	if(os == "Linux")
+  		  		sendText.replace("\n","\r\n");
+  		  	if(os == "Windows")
+  		  		sendText.replace("\r\n","\r\n");
+  		  	else
+  		  		sendText.replace("\n","\r\n");
+
   		  	Send(new Message(Version, 21, this.userid, sendText.length(), sendText));
     	    inputText.setText("");
-    	    //this.mainText.setText(mainText.getText() + "\n" + "me: " + sendText);
     	}
     }
     
@@ -607,9 +601,7 @@ class client extends JFrame
     static public javax.swing.JMenuItem jMenuItem3;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JScrollPane jScrollPane3;
     public static javax.swing.JTextArea mainText;
-    private javax.swing.JList nickList;
     private javax.swing.JButton sendButton;
 
 }

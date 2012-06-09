@@ -8,7 +8,7 @@ public class Message {
 	
 	private int offset = 0;	  // the current offset of this packet
 	private int length = 285; // the whole length of packet
-	
+	private String os = "";	// store the name of operating system that is running the server
 	private DFASTATE state;
 
 	private int version;
@@ -33,6 +33,15 @@ public class Message {
 	
 	public Message(int _version, int _messagetype, int _userid, int _messagelength, String _data) throws Exception
 	{
+		String osName = System.getProperty("os.name");
+		
+		if(osName.indexOf("Windows") >= 0)
+			os = "Windows";
+		else if(osName.indexOf("Linux") >= 0)
+			os = "Linux";
+		else
+			os = "Mac";
+		
 			this.SetVersion(_version);
 			this.SetData(_data);
 			if(_data != null)
@@ -87,7 +96,7 @@ public class Message {
 	
 	public void SetMessageLength(int _messagelength) throws Exception
 	{
-		if(fromByteArray(Data.getBytes()).length() < 2244)
+		if(Data.length() < 236)
 			this.MessageLength = _messagelength;
 		else
 			throw new IllegalStateException();
@@ -98,7 +107,15 @@ public class Message {
 		if(_data != null)
 		{
 			if(_data.length() <= 245 || _data == null)
-				this.Data = _data;
+			{
+				if(os == "Windows")
+					this.Data = _data;
+				else if(os == "Linuxs")
+					this.Data = _data.replace("\n", "\r\n");
+				else
+					this.Data = _data.replace("\n", "\r\n");
+
+			}
 			else
 				throw new IllegalStateException();
 		}
