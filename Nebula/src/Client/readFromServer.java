@@ -32,28 +32,36 @@ public class readFromServer extends Thread
 			}
 			
 			c.AddMessage(GetNewMessage(buffer));
+			String m = c.message.GetData();
+			
+			if(c.os == "Linux")
+  		  		m = "\n" + m.replace("\r\n","\n");
+  		  	if(c.os == "Windows")
+  		  		m = "\r\n" + m.replace("\r\n","\r\n");
+  		  	else
+  		  		m = "\n" + m.replace("\r\n","\n");
 			
 			if(c.connected && (c.message.GetMessageType()==12|c.message.GetMessageType()==15|c.message.GetMessageType()==22))
 			{
 				if(c.message.GetMessageType()==12)
 				{
-					c.mainText.setText(c.mainText.getText() + "\n" + c.message.GetData() + " joined");
+					c.mainText.setText(c.mainText.getText() + m + " joined");
 				}
 				else if(c.message.GetMessageType()==15)
 				{
-					c.mainText.setText(c.mainText.getText() + "\n" + c.message.GetData() + " has left");
+					c.mainText.setText(c.mainText.getText() + m + " has left");
 
 				}
 				else
 				{
 					if(c.message.GetUserid() == c.GetUserId())
 					{
-						c.mainText.setText(c.mainText.getText() + "\n" + " " + "me: " + parseMessage(c.message.GetData().replace("\r\n", "\n")));
+						c.mainText.setText(c.mainText.getText() + " " + "me: " + parseMessage(m));
 
 					}
 					else
 					{
-						c.mainText.setText(c.mainText.getText() + "\n" + " " + paserUsername(c.message.GetData()) + ": " + parseMessage(c.message.GetData().replace("\r\n", "\n")));
+						c.mainText.setText(c.mainText.getText() + " " + paserUsername(m) + ": " + parseMessage(m));
 					}
 				}
 			}

@@ -19,6 +19,7 @@ import Basic.Security;
 
 public class SingleClientThread extends Thread {
 	
+	private String os = "";	// store the name of operating system that is running the server
 	private Socket incoming;
 	private int Userid;
 	private String username = "";
@@ -33,6 +34,15 @@ public class SingleClientThread extends Thread {
 
 	SingleClientThread(Socket _incoming) throws IOException
 	{
+		String osName = System.getProperty("os.name");
+		
+		if(osName.indexOf("Windows") >= 0)
+			os = "Windows";
+		else if(osName.indexOf("Linux") >= 0)
+			os = "Linux";
+		else
+			os = "Mac";
+		
 		this.incoming = _incoming;
 		try {
 			input = new DataInputStream(incoming.getInputStream());
