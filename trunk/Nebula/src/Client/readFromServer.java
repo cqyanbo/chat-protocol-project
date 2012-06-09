@@ -48,7 +48,7 @@ public class readFromServer extends Thread
                                 {
                                         if(c.message.GetUserid() == c.GetUserId())
                                         {
-                                                c.mainText.setText(c.mainText.getText().trim() + "\n" + " " + "me: " + parseMessage(c.message.GetData().replace("\r\n", "\n")).trim());
+                                                c.mainText.setText(c.mainText.getText().trim() + "\n" +  "me: " + parseMessage(c.message.GetData().replace("\r\n", "\n")).trim());
 
                                         }
                                         else
