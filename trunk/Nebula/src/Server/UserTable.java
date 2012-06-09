@@ -5,12 +5,17 @@ import java.util.Hashtable;
 public class UserTable {
 	
 	// table for storing userid and username pair
-	private static Hashtable userTable = new Hashtable();
+	private static Hashtable<Integer, String> userTable = new Hashtable<Integer, String>();
 	
-	public static int GetNewUserId()
+	
+	public synchronized static void clean()
 	{
-		synchronized(userTable)
-		{
+		userTable.clear();
+	}
+	
+	public synchronized static int GetNewUserId()
+	{
+
 			for(int i = 0; i < userTable.size(); i++)
 			{
 				if(!userTable.containsKey(i+1))
@@ -18,38 +23,33 @@ public class UserTable {
 			}
 			
 			return userTable.size();
-		}
+		
 	}
 	
-	public static void DeleteUserId(int Id)
+	public synchronized static void DeleteUserId(int Id)
 	{
-		synchronized(userTable)
-		{
+
 			userTable.remove(Id);
-		}
+		
 	}
 	
-	public static void AddUserId(int userid, String username)
+	public synchronized static void AddUserId(int userid, String username)
 	{
-		synchronized(userTable)
-		{
-			userTable.put(userid, username);
-		}
+
+			userTable.put(userid, username.trim().toLowerCase());
+		
 	}
 	
-	public static boolean CheckUserName(String username)
+	public synchronized static boolean CheckUserName(String username)
 	{
-		synchronized(userTable)
+		if(username.trim() == "" || username.trim() == null)
 		{
-			if(userTable.contains(username.replace("\r\n", "\n")))
-			{
-				return true;
-			}
-			else
-			{
-				return false;
-			}
+			return true;
 		}
+			System.out.println("CheckUsername:" + userTable.toString());
+			System.out.println("checking: " + username.toLowerCase() + ": " + userTable.contains(username.toLowerCase()));
+			return userTable.containsValue(username.trim());
+			
 	}
 
 }

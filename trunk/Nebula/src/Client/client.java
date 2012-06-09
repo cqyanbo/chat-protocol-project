@@ -33,7 +33,10 @@ class client extends JFrame
 	
 	private ClientState clientstate = new ClientState();
 
- 	
+ 	public int GetUserId()
+ 	{
+ 		return userid;
+ 	}
  	
 	void run()
 	{
@@ -99,6 +102,7 @@ class client extends JFrame
         mainText.setEditable(false);
         mainText.setRows(5);
         mainText.setLineWrap(true);
+        
         inputText.setLineWrap(true);
         jScrollPane2.setViewportView(mainText);
 
@@ -211,21 +215,29 @@ class client extends JFrame
 
         if(evt.getKeyCode() == 10)
         {
-           	if (enter)
-    		{
-    			try {
-					sendInput();
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-    			enter = false;
-    		}
-    		else
-    		{
-    			
-    			enter = true;
-    		}
+        	if(inputText.getText().length() >= 223)
+        	{
+        		setTitle("could not enter more than 223 characters!");
+        	}
+        	else
+        	{
+	           	if (enter)
+	    		{
+	    			try {
+						sendInput();
+						setTitle("Connected");
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	    			enter = false;
+	    		}
+	    		else
+	    		{
+	    			
+	    			enter = true;
+	    		}
+        	}
         }
     }
     private void jMenuItem1ActionPerformed2(java.awt.event.ActionEvent evt) throws Exception 
@@ -506,11 +518,21 @@ class client extends JFrame
 				
 			}
 			
-			//message = null;
+			//SetMessageNull();
 				
 		}
 		
 		
+	}
+	
+	public synchronized void SetMessageNull()
+	{
+		message = null;
+	}
+	
+	public synchronized void AddMessage(Message m)
+	{
+		message = m;
 	}
 	
 	private boolean DigestCheck(Message message2) {
@@ -584,7 +606,7 @@ class client extends JFrame
     	}
     	else
     	{
-  		  	String sendText = replace(inputText.getText(),"\n","\r\n");
+  		  	String sendText = "<"+this.username+">"+replace(inputText.getText(),"\n","\r\n");
   		  	Send(new Message(1, 21, this.userid, sendText.length(), sendText));
     	    inputText.setText("");
     	    //this.mainText.setText(mainText.getText() + "\n" + "me: " + sendText);
