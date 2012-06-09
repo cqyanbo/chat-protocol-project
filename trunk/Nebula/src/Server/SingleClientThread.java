@@ -2,6 +2,7 @@ package Server;
 
 import java.io.*;
 import java.net.*;
+import java.security.Key;
 import java.util.*;
 
 import javax.xml.parsers.*;
@@ -14,6 +15,7 @@ import javax.xml.transform.stream.*;
 import Server.DFAState.DFASTATE;
 
 import Basic.Message;
+import Basic.Security;
 
 public class SingleClientThread extends Thread {
 	
@@ -23,10 +25,12 @@ public class SingleClientThread extends Thread {
 	private DataInputStream input = null;
 	private DataOutputStream output = null;
 	private BufferedReader in = null;
-	private String sharedKey = "";
+	private byte[] sharedKey = null;
 	private DFAState state = new DFAState();	// store the current state of this single conversation
-	private User user = new User();	// store the current user for this thread
-	
+	private static final String ALGO = "AES";
+	private Security security = new Security();
+	private int version = ChatServer.oldestVersion;
+
 	SingleClientThread(Socket _incoming) throws IOException
 	{
 		this.incoming = _incoming;
@@ -86,7 +90,7 @@ public class SingleClientThread extends Thread {
 					// if the server could not understand this message type and has exception, send E1: invalid message
 					try
 					{
-						Send(new Message(1, 0xE1, this.Userid, 0, null));
+						Send(new Message(version, 0xE1, this.Userid, 0, null));
 					}
 					catch(Exception e)
 					{
@@ -104,7 +108,7 @@ public class SingleClientThread extends Thread {
 					Message m = new Message();
 					
 					try {
-						Send(new Message(1, 42, this.Userid, 0, null));
+						Send(new Message(version, 42, this.Userid, 0, null));
 						//incoming.close();
 					} catch (Exception e1) {
 						// TODO Auto-generated catch block
@@ -117,7 +121,7 @@ public class SingleClientThread extends Thread {
 						m = new Message();
 						
 						try {
-							m.SetVersion(1);
+							m.SetVersion(version);
 							m.SetMessageType(15);
 							m.SetUserid(this.Userid);
 							m.SetMessageLength(username.length());
@@ -149,7 +153,7 @@ public class SingleClientThread extends Thread {
 					} catch (Exception e) {
 						// if the message type is not acceptable, send out E1
 						try {
-							Send(new Message(1, 0xE1, 0, 0, null));
+							Send(new Message(version, 0xE1, 0, 0, null));
 						} catch (Exception e1) {
 							break;
 						}
@@ -182,7 +186,6 @@ public class SingleClientThread extends Thread {
 	public boolean Send(Message m){
 		
 		try {
-			System.out.println("Send: " + m.GetMessageType() + " Data: " + m.GetData());
 			this.output.write(m.Packet2ByteArray());
 			output.flush();
 			return true;
@@ -206,7 +209,7 @@ public class SingleClientThread extends Thread {
 		{
 			// if could not parse the message correctly, send E1 message with the exception message
 			try {
-				Send(new Message(1, 0xE1, this.Userid, e.getMessage().length(), e.getMessage()));
+				Send(new Message(version, 0xE1, this.Userid, e.getMessage().length(), e.getMessage()));
 			} catch (Exception e1) {
 				this.DeleteAndClose();
 			}
@@ -225,9 +228,22 @@ public class SingleClientThread extends Thread {
 				//the current state is disconnected, the message type should be C_HELLO, or disconnect the connection
 				if(m.GetMessageType() == 01)
 				{	
-					// send S_HELLO to the client
-					Message hello = new Message(1, 02, this.Userid, 0, null);
-
+					// Version Check:
+					Message hello = null;
+					if(m.GetVersion() < ChatServer.oldestVersion)
+					{
+						version = m.GetVersion();
+						// send S_HELLO to the client
+						hello = new Message(version, 02, this.Userid, 0, null);
+					}
+					else
+					{
+						version = ChatServer.oldestVersion;
+						// send S_HELLO to the client
+						hello = new Message(ChatServer.oldestVersion, 02, this.Userid, 0, null);
+					}
+					
+					
 					// then, set the state to S_HELLO_SENT
 					if(Send(hello))
 					{
@@ -236,7 +252,7 @@ public class SingleClientThread extends Thread {
 					}
 					else
 					{
-						Message close = new Message(1, 42, this.Userid, 0, null);
+						Message close = new Message(version, 42, this.Userid, 0, null);
 						Send(close); // do not need to care if this message would be received by client, because the client would disconnect automatically when timeout
 						incoming.close();
 						break;
@@ -245,8 +261,8 @@ public class SingleClientThread extends Thread {
 				else
 				{
 					// if the message type is not correct, send out E2
-					Send(new Message(1, 0xE2, 0, 0, null));
-					Send(new Message(1, 42, this.Userid, 0, null));
+					Send(new Message(version, 0xE2, 0, 0, null));
+					Send(new Message(version, 42, this.Userid, 0, null));
 					// disconnect
 					incoming.close();
 					break;
@@ -264,7 +280,7 @@ public class SingleClientThread extends Thread {
 					} catch (ParserConfigurationException e) {
 						e.printStackTrace();
 					}
-					Message digest = new Message(1, 53, this.Userid, DataField.length(), DataField);
+					Message digest = new Message(version, 53, this.Userid, DataField.length(), DataField);
 					boolean sent = Send(digest);
 					
 					if(sent)
@@ -282,8 +298,8 @@ public class SingleClientThread extends Thread {
 				else
 				{
 					// if the message type is not correct, send out E2
-					Send(new Message(1, 0xE2, 0, 0, null));
-					Send(new Message(1, 42, this.Userid, 0, null));
+					Send(new Message(version, 0xE2, 0, 0, null));
+					Send(new Message(version, 42, this.Userid, 0, null));
 
 					// disconnect
 					incoming.close();
@@ -295,7 +311,7 @@ public class SingleClientThread extends Thread {
 				if(m.GetMessageType() == 55)
 				{	
 					// send the digest request message to client
-					Send(new Message(1, 51, 0, 0, null));
+					Send(new Message(version, 51, 0, 0, null));
 					
 					state.SetState(DFASTATE.WAIT_FOR_C_AUTH);
 					System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
@@ -303,7 +319,7 @@ public class SingleClientThread extends Thread {
 				else
 				{
 					// if the message type is not correct, send out E2
-					Send(new Message(1, 0xE2, 0, 0, null));
+					Send(new Message(version, 0xE2, 0, 0, null));
 					// disconnect
 					incoming.close();
 					break;
@@ -319,7 +335,7 @@ public class SingleClientThread extends Thread {
 					
 					if(passed)
 					{
-						Send(new Message(1, 55, 0, 0, null));
+						Send(new Message(version, 55, 0, 0, null));
 												
 						state.SetState(DFASTATE.WAIT_FOR_KEY);
 						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
@@ -327,7 +343,7 @@ public class SingleClientThread extends Thread {
 					else
 					{
 						// if the authentication did not passed, send NAK message back and disconnect
-						Send(new Message(1, 56, 0, 0, null));
+						Send(new Message(version, 56, 0, 0, null));
 						
 						// disconnect
 						incoming.close();
@@ -337,7 +353,7 @@ public class SingleClientThread extends Thread {
 				else
 				{
 					// if the message is not C_AUTH, send out E2
-					Send(new Message(1, 0xE2, 0, 0, null));
+					Send(new Message(version, 0xE2, 0, 0, null));
 				}
 				break;
 			case WAIT_FOR_KEY:
@@ -346,8 +362,8 @@ public class SingleClientThread extends Thread {
 				if(m.GetMessageType() == 54)
 				{	
 					System.out.println(m.toString());
-					this.sharedKey = m.GetData().toString().trim().replace("\r\n", "\n");
-					boolean sent = Send(new Message(1, 57, 0, 0, null));
+					this.sharedKey = m.GetData().getBytes();
+					boolean sent = Send(new Message(version, 57, 0, 0, null));
 					
 
 					state.SetState(DFASTATE.SECURED);
@@ -357,7 +373,7 @@ public class SingleClientThread extends Thread {
 				else
 				{
 					// if the message type is not correct, send out E2
-					Send(new Message(1, 0xE2, 0, 0, null));
+					Send(new Message(version, 0xE2, 0, 0, null));
 				}
 				break;
 			case SECURED:
@@ -371,7 +387,7 @@ public class SingleClientThread extends Thread {
 					if(UserTable.CheckUserName(m.GetData()))
 					{
 						// if there is the same username, request a new username by sending Duplicate User message
-						Send(new Message(1, 13, 0, 0, null));
+						Send(new Message(version, 13, 0, 0, null));
 						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
 					}
 					else
@@ -379,10 +395,10 @@ public class SingleClientThread extends Thread {
 						// if this username is unique
 						UserTable.AddUserId(this.Userid, m.GetData().trim().replace("\r\n", "\n"));
 						
-						Send(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
+						Send(new Message(version, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
 						this.username = m.GetData().trim();
 						// give this message to broadcast thread
-						BroadCastMessage(new Message(1, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
+						BroadCastMessage(new Message(version, 12, this.Userid, m.GetData().length(), m.GetData().trim()));
 						// then the client and server connected
 						state.SetState(DFASTATE.CONNECTED);
 						System.out.println("The Thread-"+this.getName()+"'s state is: " + state.GetState());
@@ -397,7 +413,7 @@ public class SingleClientThread extends Thread {
 				{
 					// if the message is not username message
 					// if the message type is not correct, send out E2
-					Send(new Message(1, Integer.toString(0xE2, 16), 0, 0, null));
+					Send(new Message(version, Integer.toString(0xE2, 16), 0, 0, null));
 				}
 				break;
 			case CONNECTED:
@@ -405,12 +421,12 @@ public class SingleClientThread extends Thread {
 				if(m.GetMessageType() == 21)
 				{
 					// add the message into the broadcast array in the broadcast thread
-					BroadCastMessage(new Message(1, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
+					BroadCastMessage(new Message(version, 22, (int)m.GetUserid(), m.GetMessageLength(), m.GetData()));
 				}
 				else
 				{
 					// if the message type is not correct, send out E2
-					Send(new Message(1, 0xE2, 0, 0, null));
+					Send(new Message(version, 0xE2, 0, 0, null));
 				}
 				break;
 			default:
@@ -432,13 +448,26 @@ public class SingleClientThread extends Thread {
 	
 
 	private String GetPublicKey() {
-		// TODO Auto-generated method stub
+		security.getpublicRSAkey();
 		return "Server_publickKey";
 	}
 
 	private String GetDigest() {
-		// TODO Auto-generated method stub
-		return "Digest";
+
+		InetAddress addr = null;
+		try {
+			addr = InetAddress.getLocalHost();
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	    // Get IP Address
+	    byte[] ipAddr = addr.getAddress();
+
+		// using client's ip address to build the user digest
+		byte[] digest = security.GenerateDigest(new String(ipAddr));
+		return new String(digest);
 	}
 
 	private boolean AnalyzeDigest(Message m) {
@@ -459,12 +488,22 @@ public class SingleClientThread extends Thread {
 		{
 			for(int i = 0; i< threads.size(); i++)
 			{
-				if(threads.get(i).isAlive() && threads.get(i).incoming.isConnected())
+				if(threads.get(i).incoming.isConnected())
 				{
 					// if the thread is alive and is not the message sender
 					System.out.println("Broad message to: " + threads.get(i).getName());
 					threads.get(i).Send(message);
 					System.out.println("Broadcasted");
+				}
+				else if(threads.get(i).incoming.isClosed())
+				{
+					ThreadList.DeleteFromThreadList(threads.get(i));
+					try {
+						Send(new Message(version, 15, threads.get(i).Userid, threads.get(i).username.length(), threads.get(i).username));
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 				
 			}

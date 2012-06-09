@@ -15,6 +15,8 @@ import Client.fakeClient;
  */
 public class ChatServer{
 	
+	public static int oldestVersion = 1;
+	
 	public static void main(String[] args)
 	{
 		

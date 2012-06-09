@@ -17,6 +17,8 @@ public class Message {
 	private int MessageLength = 0;
 	private int Reserved = 0;
 	private String Data = "";
+	private String ALGO =  "";
+	private Security security = null; 
 	
 	
 	// optional field
@@ -492,7 +494,8 @@ public class Message {
 			m.SetUserid(CharArrayToInt(tmp, 12, 27));
 			//System.out.println("User id: " + m.GetUserid());
 			m.SetMessageLength(CharArrayToInt(tmp, 32, 39));
-			//System.out.println("Message Length: " + m.GetMessageLength());
+			
+			// message delineate
 			m.SetData(CharArrayToString(tmp, 40, packet.length-1).replace("\r\n", "\n"));
 			//System.out.println("Data: " + m.GetData());
 		} catch (Exception e) {

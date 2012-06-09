@@ -2,34 +2,41 @@ package Client;
 
 import java.io.*;
 import java.net.*;
+import java.security.Key;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
+
+import javax.crypto.spec.SecretKeySpec;
 import javax.swing.*;   
 
 import Basic.Message;
+import Basic.Security;
 import Client.ClientState.CLIENTSTATE;
 
 import java.awt.event.*;  
 import java.awt.*;   
 
-//Vasiki klasi client me GUI
-//O sxediasmos tou GUI egine me to programa NetBEANS
-
 
 class client extends JFrame
 {
-	static boolean connected; //an imaste sindedemenoi i oxi
+	static boolean connected; 
 	static boolean logout; 
-	static Socket cSocket; //To socket gia tin epikoinonia
-	static DataOutputStream out; //
-	static DataInputStream in;// ta streams gia tin epikoinonia meso tou socket
-	static userInput uinput; //Thread pou analamvani tin epikoinonia tou  xristi me to Client se konsola
-							 //Den xreiazete amesa me ti leitourgia tou gui
-	static readFromServer sinput; //Thread pou analamvani epikoinonia me to server
-	static DefaultListModel list; // list for storing usernames
+	static Socket cSocket; 
+	static DataOutputStream out; 
+	static DataInputStream in;
+	static userInput uinput; 
+	static readFromServer sinput; 
 	static Message message = null;
 	
+	private int Version = 1;
 	private String username = "";
 	private int userid;
+	private Security security = new Security();
+	private final String ALGO = "AES";
+	private final byte[] keyValue = 
+	    new byte[] { 'T', 'h', 'e', 'B', 'e', 's', 't',
+	'S', 'e', 'c', 'r','e', 't', 'K', 'e', 'y' };
 	
 	private ClientState clientstate = new ClientState();
 
@@ -53,10 +60,6 @@ class client extends JFrame
         mainText = new javax.swing.JTextArea();
         jScrollPane3 = new javax.swing.JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         
-		list = new DefaultListModel();
-		list.addElement("Not Connected");
-		
-		nickList = new JList(list);
         jMenuBar1 = new javax.swing.JMenuBar();
     
         jMenu1 = new javax.swing.JMenu();
@@ -65,8 +68,19 @@ class client extends JFrame
 		jMenuItem2 = new javax.swing.JMenuItem();
 		jMenuItem3 = new javax.swing.JMenuItem();
         
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-
+		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				try {
+					Send(new Message(Version, 41, userid, 0, null));
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				System.exit(0);
+			}
+		});
+		
         inputText.setColumns(20);
         inputText.setRows(5);
         jScrollPane1.setViewportView(inputText);
@@ -85,19 +99,12 @@ class client extends JFrame
             }
         });
         
-        //otan to mous ginei clicked sto nickList (JList)
-        nickList.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                nickListMouseClicked(evt);
-            }
-        });
-        
-        //to idio me pano alla xreiazete
         inputText.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 inputTextKeyReleased(evt);
             }
         });
+        
         mainText.setColumns(20);
         mainText.setEditable(false);
         mainText.setRows(5);
@@ -189,24 +196,6 @@ class client extends JFrame
         
         setVisible(true);
 	}
-
-	private void nickListMouseClicked(java.awt.event.MouseEvent evt)
-	{
-		//an imaste sindedemenoi KAI den kanoume click ston eafto mas
-		if (connected && (!nickList.getSelectedValue().equals(nick)))
-		{
-			//Diavazo to minima
-			String msg =  JOptionPane.showInputDialog(null, "Dose to prosopiko minima: ");
-			if (msg != null)
-			{
-				//apostoli me ti methodo send pou ine pio kato
-				//Simfona me to protokolo ProvatePost msg, nick
-				//send("PrivatePost " + msg + ", "+nickList.getSelectedValue());
-			}
-
-		 	System.out.println(nickList.getSelectedValue());
-		}
-	}
 	
 	static boolean enter;
 	
@@ -215,7 +204,7 @@ class client extends JFrame
 
         if(evt.getKeyCode() == 10)
         {
-        	if(inputText.getText().length() >= 223)
+        	if(inputText.getText().length() >= 220)
         	{
         		setTitle("could not enter more than 223 characters!");
         	}
@@ -224,7 +213,7 @@ class client extends JFrame
 	           	if (enter)
 	    		{
 	    			try {
-						sendInput();
+						sendInput(inputText.getText());
 						setTitle("Connected");
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
@@ -243,7 +232,7 @@ class client extends JFrame
     private void jMenuItem1ActionPerformed2(java.awt.event.ActionEvent evt) throws Exception 
     {
     	// send out message type 41 for requiring disconnect
-    	Send(new Message(1, 41, 0, 0, null));
+    	Send(new Message(Version, 41, 0, 0, null));
     	this.connected = false;
 		while(true)
 		{
@@ -261,13 +250,12 @@ class client extends JFrame
     }
     
     //Help stuff
-    //ena aplo parathiro me tis vasikes leitourgies
     //Actions - Disconnect
     private void jMenuItem1ActionPerformed3(java.awt.event.ActionEvent evt) 
     {
     	String s;
-    	s = "Gia na sindethite Actions - Connect\nGia prosopiko minima click pano sti lista me tous users\nGia public minima grafo kati sto parathiro kai pato enter i send\nGia disconnect Actions - Disconect\n";
-    	JOptionPane.showMessageDialog( this, s,"Usage", JOptionPane.INFORMATION_MESSAGE );
+    	s = "GROUP 7";
+    	JOptionPane.showMessageDialog( this, s,"About", JOptionPane.INFORMATION_MESSAGE );
     }
     
     static String server;
@@ -306,7 +294,7 @@ class client extends JFrame
 			sinput.start();
 			
 			// once connect with server, switch DISCONNECTED state to HELLO_C_SENT state
-			Send(new Message(1, 01, 0, 0, null));
+			Send(new Message(Version, 01, 0, 0, null));
 			clientstate.SetState(CLIENTSTATE.HELLO_C_SENT);
 		}
 		catch(UnknownHostException e)
@@ -343,32 +331,6 @@ class client extends JFrame
 					this.setTitle("Connected");
 				}
 			}
-
-			
-			//an den ixa error zito to nickname
-       	 	//nick = null;
-       	 	//nick = JOptionPane.showInputDialog(null, "NickName: ");
-       	 	
-       	 	
-
-       	 	//while(nick.contains(";"))
-       	 	//{
-       	 	//	nick = JOptionPane.showInputDialog(null, "To Nickname den mporei na exi mesa \";\". Dose ena kainourgio.");
-       	 	//}
-       	 	
-       	 	
-       	 	//stelno to Login: 
-       	 	//kai i periptosi pou iparxi idi to nick kaliptete sto readFromServer antikeimeno
-       	 	//O client theorite connected otan lavi List: minima
-       	 	//episis sto readFromServer antikeimeno
-       	 	//send("Login: "+nick);
-       	 	
-       	 	//Gui allages sta menu
-       	 	//if (nick != null)
-       	 	//{
-       	 	//	jMenuItem1.setEnabled(false);
-       	 	//	jMenuItem2.setEnabled(true);       	 		
-       	 	//}			
 		}
     }
 
@@ -383,8 +345,11 @@ class client extends JFrame
 			case HELLO_C_SENT:
 				if(message.GetMessageType() == 02)
 				{
+					// Version Check
+					if(this.Version > message.GetVersion())
+						this.Version = message.GetVersion();
 					// if get S_HELLO from server, send digest request
-					Send(new Message(1, 51, 0, 0, null));
+					Send(new Message(this.Version, 51, 0, 0, null));
 					clientstate.SetState(CLIENTSTATE.WAIT_FOR_S_AUTH);
 					System.out.println("Get " + message.GetMessageType() + " go to " + CLIENTSTATE.WAIT_FOR_S_AUTH);
 				}
@@ -398,7 +363,7 @@ class client extends JFrame
 					if(pass)
 					{
 						// send passed
-						Send(new Message(1, 55, 0, 0, null));
+						Send(new Message(Version, 55, 0, 0, null));
 						
 						// go to next state
 						clientstate.SetState(CLIENTSTATE.SERVER_AUTHENTICATED);
@@ -423,7 +388,7 @@ class client extends JFrame
 					// after sending the S_AUTH passed message
 					// the client should send it's own digest and public key to server
 					String digest = "Digest" + "client_publickey";
-					Send(new Message(1, 52, 0, digest.length(), digest));
+					Send(new Message(Version, 52, 0, digest.length(), digest));
 					clientstate.SetState(CLIENTSTATE.WAIT_FOR_ACK2);
 					System.out.println("Get " + message.GetMessageType() + " go to " + clientstate.GetState());
 				}
@@ -439,12 +404,9 @@ class client extends JFrame
 				{
 					System.out.println(message.toString());
 					// the digest check passed, the client would send out a shared key for furthre encryption
-					int range = 123;
-					Random r = new Random();
-					long number = (long)(r.nextDouble()*range);
 					
 					// send this key to the server
-					Send(new Message(1, 54, 0, String.valueOf(range).length(), String.valueOf(range)));
+					Send(new Message(Version, 54, 0, new String(keyValue).length(), new String(keyValue)));
 					
 					// then go to the next state
 					clientstate.SetState(CLIENTSTATE.WAIT_FOR_ACK3);
@@ -468,7 +430,7 @@ class client extends JFrame
 				{
 					nick = null;
 			       	nick = JOptionPane.showInputDialog(null, "Please Set Up Your User Name: ");
-					Send(new Message(1, 11, 0, nick.length(), nick));
+					Send(new Message(Version, 11, 0, nick.length(), nick));
 					// key received correctly, go to the SECURED state
 					clientstate.SetState(CLIENTSTATE.SECURED);
 					System.out.println("Get " + message.GetMessageType() + " go to " + clientstate.GetState());
@@ -490,7 +452,7 @@ class client extends JFrame
 					// send the username message to server for setting up username				
 					nick = null;
 			       	nick = JOptionPane.showInputDialog(null, "Please Set Up Your User Name: ");
-					Send(new Message(1, 11, 0, nick.length(), nick));
+					Send(new Message(Version, 11, 0, nick.length(), nick));
 					System.out.println("Get " + message.GetMessageType() + " go to " + clientstate.GetState());
 
 				}
@@ -519,7 +481,6 @@ class client extends JFrame
 			}
 			
 			//SetMessageNull();
-				
 		}
 		
 		
@@ -536,8 +497,18 @@ class client extends JFrame
 	}
 	
 	private boolean DigestCheck(Message message2) {
-		// TODO Auto-generated method stub
-		return true;
+		 byte[] digest = ParseXML(message2.GetData(), "digest").getBytes();
+		 byte[] publicKey = ParseXML(message2.GetData(), "publickey").getBytes();
+		 byte[] checkMD5 = security.GenerateDigest(cSocket.getInetAddress().toString());
+		 boolean check = false;
+		 try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			check = md.isEqual(digest, checkMD5);
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		 return true;
 	}
 	// send message to user
 	public static boolean Send(Message m){
@@ -554,7 +525,7 @@ class client extends JFrame
     private void sendButtonActionPerformed(java.awt.event.ActionEvent evt) 
     {
 		try {
-			sendInput();
+			sendInput(inputText.getText()+"\n");
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -593,7 +564,7 @@ class client extends JFrame
     	return result.toString();
     }
   
-    void sendInput() throws Exception
+    void sendInput(String userInput) throws Exception
     {
     	if (!connected)
     	{
@@ -606,12 +577,25 @@ class client extends JFrame
     	}
     	else
     	{
-  		  	String sendText = "<"+this.username+">"+replace(inputText.getText(),"\n","\r\n");
-  		  	Send(new Message(1, 21, this.userid, sendText.length(), sendText));
+    		// message delineate
+  		  	String sendText = "<"+this.username+">"+replace(userInput,"\n","\r\n");
+  		  	Send(new Message(Version, 21, this.userid, sendText.length(), sendText));
     	    inputText.setText("");
     	    //this.mainText.setText(mainText.getText() + "\n" + "me: " + sendText);
     	}
     }
+    
+    private String ParseXML(String xMLdata, String string) {
+		String tmp = "";
+
+		tmp = xMLdata;
+	
+		int i = tmp.indexOf("<"+ string + ">");
+		int end = tmp.indexOf("</" + string + ">");
+		String t = tmp.substring(i+string.length()+2, end);
+		
+		return t;
+	}
     
     public static String nick;
 	private javax.swing.JTextArea inputText;
