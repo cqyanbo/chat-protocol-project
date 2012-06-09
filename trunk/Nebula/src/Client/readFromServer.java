@@ -37,23 +37,23 @@ public class readFromServer extends Thread
                         {
                                 if(c.message.GetMessageType()==12)
                                 {
-                                        c.mainText.setText(c.mainText.getText() + "\n" + c.message.GetData() + " joined");
+                                        c.mainText.setText(c.mainText.getText() + "\n" + c.message.GetData().trim() + " joined");
                                 }
                                 else if(c.message.GetMessageType()==15)
                                 {
-                                        c.mainText.setText(c.mainText.getText() + "\n" + c.message.GetData() + " has left");
+                                        c.mainText.setText(c.mainText.getText() + "\n" + c.message.GetData().trim() + " has left");
 
                                 }
                                 else
                                 {
                                         if(c.message.GetUserid() == c.GetUserId())
                                         {
-                                                c.mainText.setText(c.mainText.getText() + "\n" + " " + "me: " + parseMessage(c.message.GetData().replace("\r\n", "\n")));
+                                                c.mainText.setText(c.mainText.getText().trim() + "\n" + " " + "me: " + parseMessage(c.message.GetData().replace("\r\n", "\n")).trim());
 
                                         }
                                         else
                                         {
-                                                c.mainText.setText(c.mainText.getText() + "\n" + " " + paserUsername(c.message.GetData()) + ": " + parseMessage(c.message.GetData().replace("\r\n", "\n")));
+                                                c.mainText.setText(c.mainText.getText().trim() + "\n" + " " + paserUsername(c.message.GetData()) + ": " + parseMessage(c.message.GetData().replace("\r\n", "\n")).trim());
                                         }
                                 }
                         }
