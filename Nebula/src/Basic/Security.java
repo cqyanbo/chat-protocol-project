@@ -5,86 +5,70 @@
 package Basic;
 import java.lang.String;
 import java.security.*;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.*;
 import javax.crypto.Cipher; 
 import sun.misc.*;
 import java.security.spec.InvalidKeySpecException;
+
 /**
  *
  * 
  */
 public class Security {
     
-    private static PrivateKey privateKey;
-    private static PublicKey publicKey;
-    private static byte[] keyValue = 
-    		new byte[] { 'T', 'h', 'i', 's', 'I', 's', 'A', 'S', 'e', 'c', 'r', 'e', 't', 'K', 'e', 'y' };
-    private static Key AESKey;
-    
-    public Security()
-    {
-        generateRSAkeys();
-    }
-    
-
-    public void generateRSAkeys()
-    {
-        try
+   
+    public static void main(String args[])
+            throws java.io.IOException
         {
-            // Generate a 512-bit Digital Signature Algorithm (RSA) key pair
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-            keyGen.initialize(512);
-            KeyPair keypair = keyGen.genKeyPair();
-            privateKey = keypair.getPrivate();
-            publicKey = keypair.getPublic();
-            
-            
-            //generate AES key
-            AESKey = new SecretKeySpec(keyValue, "AES");
-
+    	try
+    	{
+    		Security S = new Security();
+    		byte [] digest = S.GenerateDigest("test");
+    		System.out.println("digest is: "+digest);
+    		String encrypt = encrypt("Omar");
+    		System.out.println("encrypted is: "+encrypt);
+    		String decypt = decrypt(encrypt);
+    		System.out.println("decrypted is: "+decypt);
+    	}
+    	catch(Exception e)
+    	{
+    		System.out.println("Error");
+    	}
+    		
         }
-        catch (java.security.NoSuchAlgorithmException e) {
-    }
-    }
-    
-    public PublicKey getpublicRSAkey()
-    {
-        return publicKey;
-    }
-    
-    public PrivateKey getprivateRSAkey()
-    {
-        return privateKey;
-    }
-    
     //http://www.digizol.org/2009/10/java-encrypt-decrypt-jce-salt.html   
-    public  byte[] encrypt(byte[] valueToEnc) throws Exception
-    {
-        Key key = getAESKey();
-        Cipher c = Cipher.getInstance("AES");
+    private static final String ALGO = "AES";
+    private static final byte[] keyValue = 
+        new byte[] { 'T', 'h', 'e', 'B', 'e', 's', 't',
+    'S', 'e', 'c', 'r','e', 't', 'K', 'e', 'y' };
+
+    public static String encrypt(String Data) throws Exception {
+        Key key = generateKey();
+        Cipher c = Cipher.getInstance(ALGO);
         c.init(Cipher.ENCRYPT_MODE, key);
-        byte[] encValue = c.doFinal(valueToEnc);
-        return encValue;
-    }
-    
-    public static byte[] decrypt(byte[] decordedValue) throws Exception {
-        Key key = getAESKey();
-        Cipher c = Cipher.getInstance("AES");
-        c.init(Cipher.DECRYPT_MODE, key);
-        byte[] decValue = c.doFinal(decordedValue);
-        return decValue;
-    }
-    
-    public static Key getAESKey()
-    {
-        return AESKey;
+        byte[] encVal = c.doFinal(Data.getBytes());
+        String encryptedValue = new BASE64Encoder().encode(encVal);
+        return encryptedValue;
     }
 
+    public static String decrypt(String encryptedData) throws Exception {
+        Key key = generateKey();
+        Cipher c = Cipher.getInstance(ALGO);
+        c.init(Cipher.DECRYPT_MODE, key);
+        byte[] decordedValue = new BASE64Decoder().decodeBuffer(encryptedData);
+        byte[] decValue = c.doFinal(decordedValue);
+        String decryptedValue = new String(decValue);
+        return decryptedValue;
+    }
+
+    private static Key generateKey() throws Exception {
+        Key key = new SecretKeySpec(keyValue, ALGO);
+        return key;
+
+    }
     
   //Digest return byte array of md5
   public byte[] GenerateDigest(String input)
