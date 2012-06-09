@@ -17,6 +17,9 @@ public class ChatServer{
         
         public static int oldestVersion = 1;
         
+	    protected DatagramSocket socket = null;
+	    protected BufferedReader in = null;
+	    
         public static void main(String[] args)
         {
                 
@@ -32,7 +35,7 @@ public class ChatServer{
                         while(true)
                         {
                                 Socket incoming = serverSocket.accept();
-                                incoming.setSoTimeout(600000);
+                                //incoming.setSoTimeout(600000);
                                 System.out.println("connected with " + incoming.getInetAddress());
                                 
                                 // spawn a thread to handle the request

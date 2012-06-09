@@ -48,7 +48,7 @@ public class Message {
                         this.SetVersion(_version);
                         this.SetData(_data);
                         if(_data != null)
-                                SetMessageLength(_data.length());
+                                SetMessageLength(_data.trim().length());
                         else
                                 SetMessageLength(0);
                         this.SetMessageType(Integer.parseInt(_messagetype, 16));
@@ -87,7 +87,7 @@ public class Message {
         
         public void SetMessageLength(int _messagelength) throws Exception
         {
-                if(fromByteArray(Data.getBytes()).length() < 2244)
+                if(Data.length() < 245)
                         this.MessageLength = _messagelength;
                 else
                         throw new IllegalStateException();
@@ -97,8 +97,8 @@ public class Message {
         {
                 if(_data != null)
                 {
-                        if(_data.length() <= 245 || _data == null)
-                                this.Data = _data;
+                        if(_data.trim().length() <= 245 || _data == null)
+                                this.Data = _data.trim();
                         else
                                 throw new IllegalStateException();
                 }
