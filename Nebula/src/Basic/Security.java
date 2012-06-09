@@ -22,17 +22,17 @@ public class Security {
     
     private static PrivateKey privateKey;
     private static PublicKey publicKey;
-    private static final byte[] keyValue = 
+    private static byte[] keyValue = 
     		new byte[] { 'T', 'h', 'i', 's', 'I', 's', 'A', 'S', 'e', 'c', 'r', 'e', 't', 'K', 'e', 'y' };
     private static Key AESKey;
     
-    Security()
+    public Security()
     {
         generateRSAkeys();
     }
     
 
-    void generateRSAkeys()
+    public void generateRSAkeys()
     {
         try
         {
@@ -46,7 +46,7 @@ public class Security {
             
             //generate AES key
             AESKey = new SecretKeySpec(keyValue, "AES");
-            //
+
         }
         catch (java.security.NoSuchAlgorithmException e) {
     }
@@ -63,22 +63,21 @@ public class Security {
     }
     
     //http://www.digizol.org/2009/10/java-encrypt-decrypt-jce-salt.html   
-    public  byte[] encrypt(String valueToEnc) throws Exception
+    public  byte[] encrypt(byte[] valueToEnc) throws Exception
     {
         Key key = getAESKey();
         Cipher c = Cipher.getInstance("AES");
         c.init(Cipher.ENCRYPT_MODE, key);
-        byte[] encValue = c.doFinal(valueToEnc.getBytes());
+        byte[] encValue = c.doFinal(valueToEnc);
         return encValue;
     }
     
-    public static String decrypt(byte[] decordedValue) throws Exception {
+    public static byte[] decrypt(byte[] decordedValue) throws Exception {
         Key key = getAESKey();
         Cipher c = Cipher.getInstance("AES");
         c.init(Cipher.DECRYPT_MODE, key);
         byte[] decValue = c.doFinal(decordedValue);
-        String decryptedValue = new String(decValue);
-        return decryptedValue;
+        return decValue;
     }
     
     public static Key getAESKey()
@@ -88,7 +87,7 @@ public class Security {
 
     
   //Digest return byte array of md5
-  byte[] GenerateDigest(String input)
+  public byte[] GenerateDigest(String input)
     {
         try        {
             String strID= input;
