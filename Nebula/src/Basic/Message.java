@@ -105,24 +105,16 @@ public class Message {
 	public void SetData(String _data) throws Exception
 	{
 		if(_data != null)
-		{
-			if(_data.length() <= 245 || _data == null)
-			{
-				if(os == "Windows")
-					this.Data = _data;
-				else if(os == "Linuxs")
-					this.Data = _data.replace("\n", "\r\n");
-				else
-					this.Data = _data.replace("\n", "\r\n");
-
-			}
-			else
-				throw new IllegalStateException();
-		}
-		else
-		{
-			_data = null;
-		}
+        {
+                if(_data.length() <= 245 || _data == null)
+                        this.Data = _data;
+                else
+                        throw new IllegalStateException();
+        }
+        else
+        {
+                _data = null;
+        }
 	}
 	
 	
@@ -511,8 +503,7 @@ public class Message {
 			m.SetUserid(CharArrayToInt(tmp, 12, 27));
 			//System.out.println("User id: " + m.GetUserid());
 			m.SetMessageLength(CharArrayToInt(tmp, 32, 39));
-			
-			// message delineate
+			//System.out.println("Message Length: " + m.GetMessageLength());
 			m.SetData(CharArrayToString(tmp, 40, packet.length-1).replace("\r\n", "\n"));
 			//System.out.println("Data: " + m.GetData());
 		} catch (Exception e) {
