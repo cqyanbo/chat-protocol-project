@@ -43,9 +43,13 @@ public class Security {
     		
         }*/
       
+	
+	//store keys for AES
     private static final byte[] keyValue = 
         new byte[] { '1', '2', '3', '4', '5', 'O', 'K','S', 'e', 'c', 'u','r', 'e', '#', '@', 'k' };
 
+    
+    //Encrypts clear string
     public static String encrypt(String Data) throws Exception {
         Key key = generateKey();
         Cipher c = Cipher.getInstance("AES");
@@ -55,6 +59,7 @@ public class Security {
         return encryptedValue;
     }
 
+    //Decrypts  string
     public static String decrypt(String encryptedData) throws Exception {
     	try{
     		encryptedData.trim();
@@ -72,12 +77,15 @@ public class Security {
     	}
     }
 
+    //generate ket for methods
     private static Key generateKey() throws Exception {
         Key key = new SecretKeySpec(keyValue, "AES");
         return key;
 
     }
     
+    
+    //md5 hashing for digests
   //Digest return byte array of md5
   public byte[] GenerateDigest(String input)
     {
