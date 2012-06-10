@@ -18,6 +18,8 @@ import java.security.spec.InvalidKeySpecException;
  * 
  */
 public class Security {
+	
+	//security concept http://java.sun.com/developer/technicalArticles/Security/AES/AES_v1.html
     
    //main method to test security
 	/*
