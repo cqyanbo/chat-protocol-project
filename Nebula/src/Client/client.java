@@ -390,7 +390,9 @@ class client extends JFrame
 				{
 					// after sending the S_AUTH passed message
 					// the client should send it's own digest and public key to server
-					String digest = "Digest" + "client_publickey";
+					byte[] Sdigest = security.GenerateDigest("Client12345");
+					String Strdigest = new String(Sdigest);
+					String digest = Strdigest + "client_publickey";
 					Send(new Message(Version, 52, 0, digest.length(), digest));
 					clientstate.SetState(CLIENTSTATE.WAIT_FOR_ACK2);
 					System.out.println("Get " + message.GetMessageType() + " go to " + clientstate.GetState());
@@ -500,18 +502,20 @@ class client extends JFrame
 	}
 	
 	private boolean DigestCheck(Message message2) {
-		 byte[] digest = ParseXML(message2.GetData(), "digest").getBytes();
-		 byte[] publicKey = ParseXML(message2.GetData(), "publickey").getBytes();
-		 byte[] checkMD5 = security.GenerateDigest(cSocket.getInetAddress().toString());
+		
+		 String Sdigest = ParseXML(message2.GetData(), "digest");
+		 String SpublicKey = ParseXML(message2.GetData(), "publickey");
 		 boolean check = false;
-		 try {
-			MessageDigest md = MessageDigest.getInstance("MD5");
-			check = md.isEqual(digest, checkMD5);
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		 return true;
+		 byte[] STempdigest = security.GenerateDigest("Server12345");
+		 String Strdigest = new String(Sdigest).trim();
+		 String StrPublicKey = "Server_publickKey";
+		 if(Sdigest.equals(Strdigest)&&StrPublicKey.equals(SpublicKey))
+			 return true;
+		 else
+		 {
+			 System.out.println("ERROR Server check");
+			 return false;
+		 }
 	}
 	// send message to user
 	public static boolean Send(Message m){
@@ -519,7 +523,7 @@ class client extends JFrame
 			out.write(m.Packet2ByteArray());
 			out.flush();
 			return true;
-		} catch (IOException e) {
+		} catch (Exception e) {
 			return false;
 		}
 	}
