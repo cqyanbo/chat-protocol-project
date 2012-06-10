@@ -54,6 +54,8 @@ public class SingleClientThread extends Thread {
         // run method
         public void run()
         {
+        	try
+        	{
                 // assign a unique userid for this user
                 // only add the new userid into usertable when the username is set up
                 this.Userid = UserTable.GetNewUserId();
@@ -133,7 +135,12 @@ public class SingleClientThread extends Thread {
                                                 }
                                                 
                                                 // give this message to broadcast thread
-                                                BroadCastMessage(m);
+                                                try {
+													BroadCastMessage(m);
+												} catch (Exception e) {
+													// TODO Auto-generated catch block
+													e.printStackTrace();
+												}
                                                 this.DeleteAndClose();
                                                 System.out.println("Threads in the list: \n" + ThreadList.ToString());
                                         }
@@ -161,6 +168,11 @@ public class SingleClientThread extends Thread {
                                 }
                         }
                 }
+        	}
+        	catch(Exception e)
+        	{
+        		System.out.println("ERROR: "+e.getMessage());
+        	}
 
         }
 
@@ -183,7 +195,7 @@ public class SingleClientThread extends Thread {
         }
 
         // send message to user
-        public boolean Send(Message m){
+        public boolean Send(Message m) throws Exception{
                 
                 try {
                         this.output.write(m.Packet2ByteArray());
@@ -194,11 +206,14 @@ public class SingleClientThread extends Thread {
                 }
         }
 
-        private Message GetNewMessage(byte[] buffer)
+        private Message GetNewMessage(byte[] buffer) throws Exception
         {
                 Message m = new Message();
-                String tt = new String(buffer);
-                char[] test = (tt).toCharArray();
+                String t = new String(buffer);
+                
+                //String t= Security.decrypt(t);
+                
+                char[] test = (t).toCharArray();
                 
                 try
                 {
@@ -277,6 +292,9 @@ public class SingleClientThread extends Thread {
                                         String DataField = null;
                                         try {
                                                 DataField = XMLBuilder();
+                                                
+                                                 
+                                                
                                         } catch (ParserConfigurationException e) {
                                                 e.printStackTrace();
                                         }
@@ -448,26 +466,17 @@ public class SingleClientThread extends Thread {
         
 
         private String GetPublicKey() {
-                security.getpublicRSAkey();
+                //security.getpublicRSAkey();
                 return "Server_publickKey";
         }
 
         private String GetDigest() {
 
-                InetAddress addr = null;
-                try {
-                        addr = InetAddress.getLocalHost();
-                } catch (UnknownHostException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                }
-
-            // Get IP Address
-            byte[] ipAddr = addr.getAddress();
-
-                // using client's ip address to build the user digest
-                byte[] digest = security.GenerateDigest(new String(ipAddr));
-                return new String(digest);
+        	
+        	byte[] Sdigest = security.GenerateDigest("Server12345");
+			String Strdigest = new String(Sdigest);
+            return new String(Strdigest);
+        
         }
 
         private boolean AnalyzeDigest(Message m) {
@@ -475,12 +484,21 @@ public class SingleClientThread extends Thread {
                 //String XMLdata = m.GetData();
                 //String d = ParseXML(XMLdata, "digest");
                 //String p = ParseXML(XMLdata, "publickey");
-                
+        	byte[] Sdigest = security.GenerateDigest("Client12345");
+			String Strdigest = new String(Sdigest).trim();
+			String digest = Strdigest + "client_publickey"; 
                 //TODO: digest check
-                return true;
+			String test = m.GetData().trim();
+            if(digest.equals(test))
+            	return true;
+            else
+            {
+            	System.out.println("Server recieved wrong key");
+            	return false;
+            }
         }
         
-        private void BroadCastMessage(Message message)
+        private void BroadCastMessage(Message message) throws Exception
         {
                 ArrayList<SingleClientThread> threads = (ArrayList<SingleClientThread>) ThreadList.GetThreadsList().clone();
                 
