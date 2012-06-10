@@ -43,7 +43,7 @@ public class Security {
     		System.out.println("Error");
     	}
     		
-        }*/
+        }
       
 	
 	//store keys for AES
@@ -86,7 +86,7 @@ public class Security {
 
     }
     
-    
+    */
     //md5 hashing for digests
   //Digest return byte array of md5
   public byte[] GenerateDigest(String input)
