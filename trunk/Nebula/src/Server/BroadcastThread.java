@@ -68,7 +68,12 @@ public class BroadcastThread extends Thread {
 			{
 				// if the thread is alive and is not the message sender
 				System.out.println("Broad message to: " + threads.get(i).getName());
-				threads.get(i).Send(message);
+				try {
+					threads.get(i).Send(message);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				System.out.println("Broadcasted");
 				
 			}
