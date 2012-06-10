@@ -28,9 +28,11 @@ public class Security {
     		Security S = new Security();
     		byte [] digest = S.GenerateDigest("test");
     		System.out.println("digest is: "+digest);
-    		String encrypt = encrypt("Omar");
+    		String s;
+    		s= "ok";
+    		String encrypt = S.encrypt(s);
     		System.out.println("encrypted is: "+encrypt);
-    		String decypt = decrypt(encrypt);
+    		String decypt = S.decrypt("FaLdAD37x7F4EYNY6iIdOlqUsCJvIXiqDqq7w7qUm6ikFVtNGE8BuqZT+ikuEH8q");
     		System.out.println("decrypted is: "+decypt);
     	}
     	catch(Exception e)
@@ -40,14 +42,12 @@ public class Security {
     		
         }
     //http://www.digizol.org/2009/10/java-encrypt-decrypt-jce-salt.html   
-    private static final String ALGO = "AES";
     private static final byte[] keyValue = 
-        new byte[] { 'T', 'h', 'e', 'B', 'e', 's', 't',
-    'S', 'e', 'c', 'r','e', 't', 'K', 'e', 'y' };
+        new byte[] { '1', '2', '3', '4', '5', 'O', 'K','S', 'e', 'c', 'u','r', 'e', '#', '@', 'k' };
 
     public static String encrypt(String Data) throws Exception {
         Key key = generateKey();
-        Cipher c = Cipher.getInstance(ALGO);
+        Cipher c = Cipher.getInstance("AES");
         c.init(Cipher.ENCRYPT_MODE, key);
         byte[] encVal = c.doFinal(Data.getBytes());
         String encryptedValue = new BASE64Encoder().encode(encVal);
@@ -55,17 +55,24 @@ public class Security {
     }
 
     public static String decrypt(String encryptedData) throws Exception {
+    	try{
+    		encryptedData.trim();
         Key key = generateKey();
-        Cipher c = Cipher.getInstance(ALGO);
+        Cipher c = Cipher.getInstance("AES");
         c.init(Cipher.DECRYPT_MODE, key);
         byte[] decordedValue = new BASE64Decoder().decodeBuffer(encryptedData);
         byte[] decValue = c.doFinal(decordedValue);
         String decryptedValue = new String(decValue);
         return decryptedValue;
+    	}
+    	catch(Exception e)
+    	{
+    		return "";
+    	}
     }
 
     private static Key generateKey() throws Exception {
-        Key key = new SecretKeySpec(keyValue, ALGO);
+        Key key = new SecretKeySpec(keyValue, "AES");
         return key;
 
     }
